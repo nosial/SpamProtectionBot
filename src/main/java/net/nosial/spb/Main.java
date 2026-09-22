@@ -9,7 +9,7 @@ import net.nosial.spb.classes.Database;
 import net.nosial.spb.classes.HandlerRegistry;
 import net.nosial.spb.classes.TelegramBot;
 import net.nosial.spb.classes.UpdateDispatcher;
-import net.nosial.spb.classes.federation.FederationService;
+import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.classes.notifications.NotificationFormatter;
 import net.nosial.spb.classes.notifications.NotificationService;
 import net.nosial.spb.exceptions.CommandLineException;
