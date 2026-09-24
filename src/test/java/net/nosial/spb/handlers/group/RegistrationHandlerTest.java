@@ -127,6 +127,52 @@ class RegistrationHandlerTest
     }
 
     @Nested
+    @DisplayName("Detecting a user's language")
+    class LanguageDetection
+    {
+        /**
+         * Builds a group message from user 55 whose Telegram client reports the given language.
+         *
+         * @param languageCode the client's language code
+         * @return the update JSON
+         */
+        private static String messageIn(String languageCode)
+        {
+            return """
+                    {"update_id":1,"message":{"message_id":7,"date":1700000000,
+                     "chat":{"id":%d,"type":"supergroup","title":"Test Chat"},
+                     "from":{"id":55,"is_bot":false,"first_name":"Member","language_code":"%s"},
+                     "text":"hello"}}""".formatted(SUPERGROUP, languageCode);
+        }
+
+        @Test
+        @DisplayName("a client language the bot has no translation for leaves the default in place")
+        void untranslatedLanguageKeepsDefault()
+        {
+            // resolve() finds nothing for a language without a file, and saving that null used to
+            // fail the whole handler with a NullPointerException.
+            HandlerContext context = Contexts.template(RegistrationHandlerTest.this.directory);
+
+            handle(context, messageIn("de"));
+
+            assertEquals(Contexts.languages().defaultLanguage(),
+                    context.managers().languagePreferences().getUserLanguage(55L));
+        }
+
+        @Test
+        @DisplayName("a client language the bot translates is adopted")
+        void translatedLanguageIsAdopted()
+        {
+            HandlerContext context = Contexts.template(RegistrationHandlerTest.this.directory);
+
+            handle(context, messageIn("es"));
+
+            assertEquals(Contexts.languages().resolve("es"),
+                    context.managers().languagePreferences().getUserLanguage(55L));
+        }
+    }
+
+    @Nested
     @DisplayName("Following a basic group upgraded to a supergroup")
     class Migration
     {

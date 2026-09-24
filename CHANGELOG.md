@@ -12,6 +12,7 @@ This update introduces some minor bug fixes.
 ### Fixed 
  - Refactored admin permission checks, improved fallback logic for cache reads, and added chat migration methods
  - Replaced `sendText` with `sendHtml` in `ReportHandler` and updated `MessageHelper` logic for topic message validation. Removed unused `sendText` method from `Handler`.
+ - Handled null language resolution for outdated menu buttons and missing translations in `ConfigurationHandler`, `RegistrationHandler`, and `LanguageHandler`.
 
 
 ## [1.0.1] - 2026-09-24

@@ -129,7 +129,14 @@ public final class RegistrationHandler extends Handler
             return;
         }
 
+        // A client language the bot has no translation for resolves to nothing; there is nothing
+        // to detect then, and the user keeps the default.
         Language detected = context.languages().resolve(languageCode);
+        if (detected == null)
+        {
+            return;
+        }
+
         Language current = context.managers().languagePreferences().getUserLanguage(user.getId());
         Language botDefault = context.languages().defaultLanguage();
 

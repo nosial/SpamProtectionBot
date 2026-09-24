@@ -126,6 +126,12 @@ public final class LanguageHandler extends Handler
         }
 
         Language language = context.languages().resolve(parts[1]);
+        if (language == null && !"start".equals(parts[1]) && !"start_menu".equals(parts[1]) && !"menu".equals(parts[1]))
+        {
+            // A button from an older menu may name a language that is no longer shipped.
+            answer(context, callbackQuery);
+            return;
+        }
         boolean returnToStart = parts.length == 3 && "start".equals(parts[2]);
         Message message = requireMessage(callbackQuery);
         if (message == null)

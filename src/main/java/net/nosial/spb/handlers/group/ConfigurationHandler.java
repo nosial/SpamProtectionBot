@@ -349,8 +349,12 @@ public final class ConfigurationHandler extends Handler
                 }
                 else if (action.startsWith("set_language:"))
                 {
-                    saveChatLanguage(context, chatId,
-                            context.languages().resolve(action.substring("set_language:".length())));
+                    // A button from an older menu may name a language that is no longer shipped.
+                    Language language = context.languages().resolve(action.substring("set_language:".length()));
+                    if (language != null)
+                    {
+                        saveChatLanguage(context, chatId, language);
+                    }
                     page = ConfigurationPage.LANGUAGE;
                 }
                 else
