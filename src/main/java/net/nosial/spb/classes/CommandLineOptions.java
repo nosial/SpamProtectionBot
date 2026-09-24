@@ -4,6 +4,7 @@ import net.nosial.spb.exceptions.CommandLineException;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -18,12 +19,17 @@ import java.util.Objects;
  * the same three for {@code -d} / {@code --database}. Anything else is rejected with the usage
  * text rather than silently ignored.
  *
+ * <p>Each option can also be given as an environment variable, {@value #CONFIG_VARIABLE} and
+ * {@value #DATABASE_VARIABLE}, which suits containers and service managers. An option on the
+ * command line takes precedence over its variable, and the variable over the default. A variable
+ * that is set but empty is treated as unset.
+ *
  * @param configuration the configuration file path
- * @param configurationExplicit whether the configuration path came from the command line rather
- *                              than the default
+ * @param configurationExplicit whether the configuration path came from the command line or the
+ *                              environment rather than the default
  * @param database the database file path
- * @param databaseExplicit whether the database path came from the command line rather than the
- *                         default
+ * @param databaseExplicit whether the database path came from the command line or the environment
+ *                         rather than the default
  * @param help whether the user asked for the usage text
  */
 public record CommandLineOptions(Path configuration, boolean configurationExplicit,
@@ -35,25 +41,41 @@ public record CommandLineOptions(Path configuration, boolean configurationExplic
     /** The database file used when {@code --database} is not given and the configuration names none. */
     public static final String DEFAULT_DATABASE = "./database.db";
 
+    public static final String CONFIG_VARIABLE = "SPB_CONFIG";
+    public static final String DATABASE_VARIABLE = "SPB_DATABASE";
+
     /**
-     * Reads the options out of the raw command line.
+     * Reads the options out of the raw command line and the process environment.
      *
      * <p>Takes the arguments and works the rest out for itself, the way {@link Configuration}
      * takes a file path.
      *
      * @param args the arguments passed to {@code main}
      * @throws CommandLineException If an option is unknown, malformed, repeated, or missing its
-     *                              value
+     *                              value, or an environment variable is not a valid path
      */
     public CommandLineOptions(String[] args)
     {
-        this(parse(args));
+        this(args, System.getenv());
+    }
+
+    /**
+     * Reads the options out of the given command line and environment.
+     *
+     * @param args the arguments passed to {@code main}
+     * @param environment the environment variables to fall back on, such as {@link System#getenv()}
+     * @throws CommandLineException If an option is unknown, malformed, repeated, or missing its
+     *                              value, or an environment variable is not a valid path
+     */
+    public CommandLineOptions(String[] args, Map<String, String> environment)
+    {
+        this(parse(args, environment));
     }
 
     /**
      * Copies the values read from the command line.
      *
-     * @param parsed the options {@link #parse(String[])} read
+     * @param parsed the options {@link #parse(String[], Map)} read
      */
     private CommandLineOptions(CommandLineOptions parsed)
     {
@@ -61,16 +83,19 @@ public record CommandLineOptions(Path configuration, boolean configurationExplic
     }
 
     /**
-     * Reads the arguments into a set of options.
+     * Reads the arguments into a set of options, falling back on the environment for any option
+     * the command line does not give.
      *
      * @param args the arguments passed to {@code main}
+     * @param environment the environment variables
      * @return the parsed options
      * @throws CommandLineException If an option is unknown, malformed, repeated, or missing its
-     *                              value
+     *                              value, or an environment variable is not a valid path
      */
-    private static CommandLineOptions parse(String[] args)
+    private static CommandLineOptions parse(String[] args, Map<String, String> environment)
     {
         Objects.requireNonNull(args, "args must not be null");
+        Objects.requireNonNull(environment, "environment must not be null");
 
         Path configuration = null;
         Path database = null;
@@ -127,9 +152,44 @@ public record CommandLineOptions(Path configuration, boolean configurationExplic
             }
         }
 
+        if (configuration == null)
+        {
+            configuration = fromEnvironment(environment, CONFIG_VARIABLE);
+        }
+        if (database == null)
+        {
+            database = fromEnvironment(environment, DATABASE_VARIABLE);
+        }
+
         return new CommandLineOptions(configuration != null ? configuration : Path.of(DEFAULT_CONFIGURATION),
                 configuration != null, database != null ? database : Path.of(DEFAULT_DATABASE),
                 database != null, help);
+    }
+
+    /**
+     * Reads a path from an environment variable.
+     *
+     * @param environment the environment variables
+     * @param variable the variable name
+     * @return the path, or {@code null} when the variable is unset or blank
+     * @throws CommandLineException If the variable is set to something that is not a valid path
+     */
+    private static Path fromEnvironment(Map<String, String> environment, String variable)
+    {
+        String value = environment.get(variable);
+        if (value == null || value.isBlank())
+        {
+            return null;
+        }
+
+        try
+        {
+            return Path.of(value.trim());
+        }
+        catch (InvalidPathException e)
+        {
+            throw new CommandLineException("Environment variable " + variable + " is not a valid path: " + value, e);
+        }
     }
 
     /**
@@ -205,6 +265,10 @@ public record CommandLineOptions(Path configuration, boolean configurationExplic
                  -d, --database <path>   Path to the SQLite database file, created when missing
                                          (default: %s)
                  -h, --help              Show this help and exit
-               """.formatted(DEFAULT_CONFIGURATION, DEFAULT_DATABASE);
+
+               Environment variables (used when the matching option is not given):
+                 %-23s Same as --config
+                 %-23s Same as --database
+               """.formatted(DEFAULT_CONFIGURATION, DEFAULT_DATABASE, CONFIG_VARIABLE, DATABASE_VARIABLE);
     }
 }

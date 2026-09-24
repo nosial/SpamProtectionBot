@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,7 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests for parsing the command line into the two paths the bot starts from.
+ * Tests for parsing the command line and environment into the two paths the bot starts from.
+ *
+ * <p>Every case passes its environment explicitly, so a variable set on the machine running the
+ * tests cannot change their outcome.
  */
 class CommandLineOptionsTest
 {
@@ -25,7 +29,7 @@ class CommandLineOptionsTest
      */
     private static CommandLineOptions parse(String... args)
     {
-        return new CommandLineOptions(args);
+        return new CommandLineOptions(args, Map.of());
     }
 
     /**
@@ -36,7 +40,7 @@ class CommandLineOptionsTest
      */
     private static CommandLineException failure(String... args)
     {
-        return assertThrows(CommandLineException.class, () -> new CommandLineOptions(args));
+        return assertThrows(CommandLineException.class, () -> new CommandLineOptions(args, Map.of()));
     }
 
     @Nested
@@ -163,6 +167,57 @@ class CommandLineOptionsTest
     }
 
     @Nested
+    @DisplayName("Reading the environment")
+    class Environment
+    {
+        @Test
+        @DisplayName("the variables are used when no option is given")
+        void readsVariables()
+        {
+            CommandLineOptions options = new CommandLineOptions(new String[0], Map.of(
+                    "SPB_CONFIG", "/etc/spb/configuration.yml", "SPB_DATABASE", "/var/lib/spb/database.db"));
+
+            assertEquals(Path.of("/etc/spb/configuration.yml"), options.configuration());
+            assertEquals(Path.of("/var/lib/spb/database.db"), options.database());
+            assertTrue(options.configurationExplicit());
+            assertTrue(options.databaseExplicit());
+        }
+
+        @Test
+        @DisplayName("an option on the command line takes precedence over its variable")
+        void commandLineWins()
+        {
+            CommandLineOptions options = new CommandLineOptions(new String[]{"--config", "cli.yml"},
+                    Map.of("SPB_CONFIG", "env.yml", "SPB_DATABASE", "env.db"));
+
+            assertEquals(Path.of("cli.yml"), options.configuration());
+            assertEquals(Path.of("env.db"), options.database());
+        }
+
+        @Test
+        @DisplayName("a set but empty variable is treated as unset")
+        void blankIsUnset()
+        {
+            CommandLineOptions options = new CommandLineOptions(new String[0],
+                    Map.of("SPB_CONFIG", "", "SPB_DATABASE", "   "));
+
+            assertEquals(Path.of(CommandLineOptions.DEFAULT_CONFIGURATION), options.configuration());
+            assertEquals(Path.of(CommandLineOptions.DEFAULT_DATABASE), options.database());
+            assertFalse(options.configurationExplicit());
+            assertFalse(options.databaseExplicit());
+        }
+
+        @Test
+        @DisplayName("an invalid path in a variable is rejected naming the variable")
+        void rejectsInvalidPath()
+        {
+            CommandLineException e = assertThrows(CommandLineException.class,
+                    () -> new CommandLineOptions(new String[0], Map.of("SPB_DATABASE", "bad\0path")));
+            assertTrue(e.getMessage().contains("SPB_DATABASE"), e.getMessage());
+        }
+    }
+
+    @Nested
     @DisplayName("Describing itself")
     class Usage
     {
@@ -177,6 +232,8 @@ class CommandLineOptionsTest
             assertTrue(usage.contains("--help"), usage);
             assertTrue(usage.contains(CommandLineOptions.DEFAULT_CONFIGURATION), usage);
             assertTrue(usage.contains(CommandLineOptions.DEFAULT_DATABASE), usage);
+            assertTrue(usage.contains(CommandLineOptions.CONFIG_VARIABLE), usage);
+            assertTrue(usage.contains(CommandLineOptions.DATABASE_VARIABLE), usage);
         }
     }
 }
