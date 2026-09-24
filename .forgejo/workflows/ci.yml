@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The pom targets --release 17 for the bot's own code, but the JFederation dependency ships
+      # class files compiled for Java 24, which an older compiler cannot even read. See the
+      # Dockerfile for the same constraint on the runtime side.
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          java-version: 24
+          distribution: temurin
+          cache: maven
+
+      - name: Build shaded jar
+        run: mvn -B package -DskipTests
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spam-protection-bot
+          path: target/spb-*.jar
+          retention-days: 7
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          java-version: 24
+          distribution: temurin
+          cache: maven
+
+      - name: Run tests
+        run: mvn -B test
+
+  release:
+    needs: [build, test]
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spam-protection-bot
+          path: .
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: spb-*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
