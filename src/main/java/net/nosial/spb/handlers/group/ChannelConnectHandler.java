@@ -8,6 +8,8 @@ import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.context.HandlerContext;
+import net.nosial.spb.classes.sessions.ConfigurationSessionManager;
+import net.nosial.spb.objects.context.ConfigurationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -108,6 +110,45 @@ public final class ChannelConnectHandler extends Handler
         }
         sendReply(context, message, context.languages().get(lang, "channel_connect", "linked_success", chatId));
         deleteCommandMessage(context, message);
+        refreshConfigurationMenu(context, verificationCode, chatId);
+    }
+
+    /**
+     * Updates the configuration menu that displayed the verification code, so the administrator
+     * sees the chat linked without having to reopen the settings.
+     *
+     * <p>The link is already saved and confirmed by the time this runs; failing to edit the menu
+     * (it may have been deleted, or the session expired) is logged and otherwise ignored.
+     *
+     * @param context the per-update context
+     * @param verificationCode the code that was just redeemed
+     * @param chatId the protected chat the notification chat was linked to
+     */
+    private static void refreshConfigurationMenu(HandlerContext context, long verificationCode, long chatId)
+    {
+        ConfigurationSessionManager sessions = context.sessions().configuration();
+        ConfigurationContext session = sessions.findByChannelLinkVerificationCode(verificationCode);
+        if (session == null || session.chatId() != chatId)
+        {
+            return;
+        }
+
+        // The code has been used; it must not be redeemable again from the same menu.
+        sessions.updateChannelLinkVerificationCode(session.hash(), null);
+        boolean hasMenu = session.ephemeral() ? session.ephemeralMessageId() != null : session.messageId() != null;
+        if (!hasMenu)
+        {
+            return;
+        }
+
+        try
+        {
+            ConfigurationHandler.notifyChannelLinked(context, sessions.find(session.hash()));
+        }
+        catch (TelegramApiException e)
+        {
+            LOGGER.debug("Could not refresh the configuration menu for chat {}: {}", chatId, e.getMessage());
+        }
     }
 
     /**
