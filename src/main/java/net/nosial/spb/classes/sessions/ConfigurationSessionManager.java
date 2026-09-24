@@ -167,6 +167,32 @@ public final class ConfigurationSessionManager extends AbstractSessionManager<Co
     }
 
     /**
+     * Returns the session currently showing the given channel verification code, so a
+     * {@code /connect <code>} command can update the configuration menu that displayed it.
+     *
+     * @param verificationCode the verification code sent with {@code /connect}
+     * @return the session, or {@code null} when no live session shows that code
+     */
+    public ConfigurationContext findByChannelLinkVerificationCode(long verificationCode)
+    {
+        String hash = this.verificationIndex.resolve(verificationCode);
+        if (hash == null)
+        {
+            return null;
+        }
+
+        ConfigurationContext session = find(hash);
+        if (session == null || session.channelLinkVerificationCode() == null
+                || session.channelLinkVerificationCode() != verificationCode)
+        {
+            // The index outlived the session, or the session has since shown a different code.
+            this.verificationIndex.clear(verificationCode);
+            return null;
+        }
+        return session;
+    }
+
+    /**
      * Removes the session from the store and clears its verification index entry.
      *
      * @param hash the session hash

@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Thread-safe, high-performance in-memory cache used as the runtime information layer of the bot.
@@ -143,6 +144,17 @@ public final class Cache<K, V>
     public void remove(K key)
     {
         this.cache.invalidate(key);
+    }
+
+    /**
+     * Removes every entry whose key matches the predicate, such as all keys under a prefix.
+     *
+     * @param predicate selects the keys to remove
+     */
+    public void removeIf(Predicate<? super K> predicate)
+    {
+        Objects.requireNonNull(predicate, "predicate must not be null");
+        this.cache.asMap().keySet().removeIf(predicate);
     }
 
     /**

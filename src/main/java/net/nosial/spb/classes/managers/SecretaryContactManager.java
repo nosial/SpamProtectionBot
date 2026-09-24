@@ -110,18 +110,6 @@ public final class SecretaryContactManager
     }
 
     /**
-     * Removes every secretary contact. Used when secretary mode is disabled but the owning
-     * business connection id is no longer known, so contacts cannot be matched by connection.
-     *
-     * @throws DatabaseException If there is an error while updating the database.
-     */
-    public void deleteAllSecretaryContacts() throws DatabaseException
-    {
-        this.database.execute("DELETE FROM secretary_contacts", null);
-        this.cache.clear();
-    }
-
-    /**
      * Loads a secretary contact from the database using the given business connection ID and contact ID.
      *
      * @param businessConnectionId the unique identifier of the business connection
