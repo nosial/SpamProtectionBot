@@ -1,7 +1,9 @@
 package net.nosial.spb.classes.sessions;
 
 import java.util.List;
+import java.util.Map;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.MessageContent;
 import net.nosial.spb.objects.ReportAttachment;
 import net.nosial.jfederation.enums.IncidentType;
@@ -55,7 +57,7 @@ public final class ReportSessionManager extends AbstractSessionManager<ReportCon
     {
         return create(command.getFrom().getId(), command.getChatId(), target.getMessageId(),
                 target.getFrom() != null ? target.getFrom().getId() : 0L, MessageContent.textOrCaption(target),
-                attachments, target.getMessageThreadId(), reporterIsAdmin, ephemeral);
+                attachments, FlatMetadata.of(target), target.getMessageThreadId(), reporterIsAdmin, ephemeral);
     }
 
     /**
@@ -75,7 +77,8 @@ public final class ReportSessionManager extends AbstractSessionManager<ReportCon
                                 List<ReportAttachment> attachments, boolean reporterIsAdmin)
     {
         return create(forward.getFrom().getId(), forward.getChatId(), originalMessageId, originalAuthorId,
-                MessageContent.textOrCaption(forward), attachments, null, reporterIsAdmin, false);
+                MessageContent.textOrCaption(forward), attachments, FlatMetadata.of(forward), null,
+                reporterIsAdmin, false);
     }
 
     /**
@@ -87,18 +90,20 @@ public final class ReportSessionManager extends AbstractSessionManager<ReportCon
      * @param targetAuthorId who is being reported
      * @param targetText the reported content
      * @param attachments the files attached to it
+     * @param targetMetadata every property of the reported message, flattened
      * @param messageThreadId the forum topic the report belongs to, or {@code null}
      * @param reporterIsAdmin whether the reporter is an administrator
      * @param ephemeral whether the prompt is shown only to the reporter
      * @return the created session
      */
     private ReportContext create(long reporterId, long chatId, long targetMessageId, long targetAuthorId,
-                                 String targetText, List<ReportAttachment> attachments, Integer messageThreadId,
+                                 String targetText, List<ReportAttachment> attachments,
+                                 Map<String, Object> targetMetadata, Integer messageThreadId,
                                  boolean reporterIsAdmin, boolean ephemeral)
     {
         long now = System.currentTimeMillis();
         return store(new ReportContext(generateHash(), reporterId, chatId, targetMessageId, targetAuthorId,
-                targetText, attachments, null, ephemeral, messageThreadId, ReportPage.INCIDENT, null,
+                targetText, attachments, targetMetadata, null, ephemeral, messageThreadId, ReportPage.INCIDENT, null,
                 reporterIsAdmin, now, now));
     }
 
