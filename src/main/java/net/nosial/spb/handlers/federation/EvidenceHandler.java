@@ -79,8 +79,7 @@ public final class EvidenceHandler extends Handler
      * @param evidenceUuid the Federation evidence UUID to look up
      * @throws TelegramApiException if a response cannot be sent
      */
-    private void handleEvidenceLookup(HandlerContext context, Message message, String evidenceUuid)
-            throws TelegramApiException
+    private void handleEvidenceLookup(HandlerContext context, Message message, String evidenceUuid) throws TelegramApiException
     {
         OperatorIdentity operatorIdentity = context.managers().operators()
                 .getOperator(message.getFrom().getId()).orElse(null);
