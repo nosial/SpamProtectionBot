@@ -53,7 +53,8 @@ public final class SettingsHandler extends Handler
      *
      * <p>Only administrators with the ability to change group information are answered. The
      * settings menu is sent as an ephemeral message visible only to the sender. The bot must be
-     * a change-information administrator for the menu to open.
+     * a change-information administrator for the menu to open. Both permissions are checked
+     * against Telegram's current administrator list, not a cached one.
      *
      * @param context the per-update command context
      * @param message the incoming {@code /settings} message
@@ -61,6 +62,10 @@ public final class SettingsHandler extends Handler
      */
     private static void handleGroupSettings(HandlerContext context, Message message) throws TelegramApiException
     {
+        // Checked against Telegram rather than the cache, so a permission just granted or revoked
+        // applies to this very command instead of after the cached list expires.
+        refreshAdministrators(context, message.getChatId());
+
         if (!isChangeInformationAdministrator(context, message))
         {
             LOGGER.debug("Ignoring /settings from non-administrator {} in chat {}",

@@ -130,6 +130,10 @@ public final class StartHandler extends Handler
      */
     private static void handleGroupStart(HandlerContext context, Message message, Language lang) throws TelegramApiException
     {
+        // Checked against Telegram rather than the cache: /start is typically sent right after the
+        // bot is added or promoted, exactly when a cached administrator list is out of date.
+        refreshAdministrators(context, message.getChatId());
+
         if (getMessagePayload(message) != null)
         {
             handleStartGroupJoin(context, message, lang);

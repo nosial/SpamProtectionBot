@@ -56,7 +56,7 @@ public final class LanguagePreferenceManager
      */
     public Language getChatLanguage(long chatId)
     {
-        return this.chatCache.get(chatId, id -> loadLanguage(TYPE_CHAT, id));
+        return this.chatCache.get(chatId, id -> loadLanguage(TYPE_CHAT, id), this.languages.defaultLanguage());
     }
 
     /**
@@ -67,7 +67,7 @@ public final class LanguagePreferenceManager
      */
     public Language getUserLanguage(long userId)
     {
-        return this.userCache.get(userId, id -> loadLanguage(TYPE_USER, id));
+        return this.userCache.get(userId, id -> loadLanguage(TYPE_USER, id), this.languages.defaultLanguage());
     }
 
     /**
@@ -81,6 +81,30 @@ public final class LanguagePreferenceManager
     {
         storeLanguage(TYPE_CHAT, chatId, language);
         this.chatCache.put(chatId, language);
+    }
+
+    /**
+     * Moves a chat's language preference to a new chat id, for a group Telegram upgraded to a
+     * supergroup. Nothing moves when the old chat has no preference or the new chat already has one.
+     *
+     * @param fromChatId the chat's previous id
+     * @param toChatId the chat's new id
+     * @throws DatabaseException If there is an error while updating the database.
+     */
+    public void migrateChat(long fromChatId, long toChatId) throws DatabaseException
+    {
+        this.database.execute("UPDATE language_preferences SET preference_id = ? "
+                + "WHERE preference_type = ? AND preference_id = ? AND NOT EXISTS "
+                + "(SELECT 1 FROM language_preferences WHERE preference_type = ? AND preference_id = ?)", statement ->
+        {
+            statement.setLong(1, toChatId);
+            statement.setString(2, TYPE_CHAT);
+            statement.setLong(3, fromChatId);
+            statement.setString(4, TYPE_CHAT);
+            statement.setLong(5, toChatId);
+        });
+        this.chatCache.remove(fromChatId);
+        this.chatCache.remove(toChatId);
     }
 
     /**
@@ -119,11 +143,13 @@ public final class LanguagePreferenceManager
 
     /**
      * Loads the language preference for a given type and ID from the database.
-     * If no preference is found or an error occurs, the bot's default language is returned.
+     * If no preference is found, the bot's default language is returned.
+     *
+     * @throws Cache.LoadFailedException If the preference cannot be read, so the failure is not cached
      *
      * @param type the type of preference (e.g., "chat" or "user"); must not be null
      * @param id the unique identifier for the preference type, such as a chat ID or user ID
-     * @return the resolved language preference, or the default language if no preference is found or an error occurs
+     * @return the resolved language preference, or the default language if no preference is found
      */
     private Language loadLanguage(String type, long id)
     {
@@ -142,7 +168,7 @@ public final class LanguagePreferenceManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load {} language for {}: {}", type.toLowerCase(), id, e.getMessage());
-            return this.languages.defaultLanguage();
+            throw new Cache.LoadFailedException("Failed to load " + type + " language for " + id, e);
         }
     }
 }

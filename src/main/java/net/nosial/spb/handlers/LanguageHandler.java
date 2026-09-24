@@ -24,7 +24,8 @@ import java.util.List;
  * Handles the {@code /language} and {@code /lang} commands and the language-selection callbacks.
  *
  * <p>In private chats the command shows the current language and inline flag buttons for the user
- * to switch; in group chats only the group owner can change the language and the menu is shown as
+ * to switch; in group chats only administrators who can change the group's information may change
+ * the language, checked against Telegram on both the command and each button press, and the menu is shown as
  * an ephemeral message visible only to the caller.
  *
  * <p>{@code lang:<language_code>} callbacks persist the new language preference and refresh the
@@ -67,10 +68,11 @@ public final class LanguageHandler extends Handler
 
         if (isGroup)
         {
-            if (!isChatOwner(context, message))
+            refreshAdministrators(context, chatId);
+            if (!isChangeInformationAdministrator(context, message))
             {
                 Language userLang = context.managers().languagePreferences().getUserLanguage(userId);
-                String errorText = context.languages().get(userLang, "general", "language.group_owner_only");
+                String errorText = context.languages().get(userLang, "general", "language.group_admin_only");
                 sendHtml(context, message, errorText, true, null);
                 return;
             }
@@ -177,6 +179,17 @@ public final class LanguageHandler extends Handler
         long userId = callbackQuery.getFrom() != null ? callbackQuery.getFrom().getId() : 0;
 
         boolean isGroup = chatId < 0;
+        if (isGroup)
+        {
+            refreshAdministrators(context, chatId);
+            if (!isChangeInformationAdministrator(context, chatId, userId))
+            {
+                answerAlert(context, callbackQuery, context.languages().get(resolveLanguage(context, callbackQuery),
+                        "general", "language.group_admin_only"));
+                return;
+            }
+        }
+
         try
         {
             if (isGroup)

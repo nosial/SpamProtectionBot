@@ -88,14 +88,14 @@ public final class UserManager
      *
      * <p>Cache misses load the identity from the database, so the returned value always reflects
      * what was last durably written. A transient database read failure is logged and reported as
-     * absent; a cached absence refreshes from the database once the cache entry expires.
+     * absent for this lookup only; the next lookup retries the read.
      *
      * @param userId the Telegram user id
      * @return the identity, or {@link Optional#empty()} when no record exists
      */
     public Optional<UserIdentity> getUser(long userId)
     {
-        UserIdentity identity = this.byIdCache.get(userId, this::loadUserById);
+        UserIdentity identity = this.byIdCache.get(userId, this::loadUserById, null);
         return Optional.ofNullable(identity);
     }
 
@@ -104,7 +104,7 @@ public final class UserManager
      *
      * <p>Usernames are matched case-insensitively and without the leading '@'. Cache misses load
      * the mapping from the database. A transient database read failure is logged and reported as
-     * absent.
+     * absent for this lookup only; the next lookup retries the read.
      *
      * @param username the Telegram username, with or without the leading '@'
      * @return the user id, or {@link Optional#empty()} when no record exists
@@ -117,7 +117,7 @@ public final class UserManager
             return Optional.empty();
         }
 
-        Long userId = this.byUsernameCache.get(normalized, this::loadUserIdByUsername);
+        Long userId = this.byUsernameCache.get(normalized, this::loadUserIdByUsername, null);
         return Optional.ofNullable(userId);
     }
 
@@ -242,7 +242,7 @@ public final class UserManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load user identity for user {}: {}", userId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load user " + userId, e);
         }
     }
 
@@ -262,7 +262,7 @@ public final class UserManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load user id for username {}: {}", username, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load username " + username, e);
         }
     }
 

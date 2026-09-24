@@ -329,7 +329,8 @@ public final class ScanningHandler extends Handler
         }
 
         List<AdminInfo> administrators = context.chatAdmins().getIfPresent(message.getChatId());
-        return administrators != null && administrators.stream().anyMatch(a -> a.id() == context.botUserId());
+        return administrators != null
+                && administrators.stream().anyMatch(a -> a.id() == context.botUserId() && a.isModerator());
     }
 
     /**
@@ -507,7 +508,8 @@ public final class ScanningHandler extends Handler
             return true;
         }
         List<AdminInfo> cachedAdministrators = context.chatAdmins().getIfPresent(message.getChatId());
-        return cachedAdministrators != null && cachedAdministrators.stream().anyMatch(a -> a.id() == author.getId());
+        return cachedAdministrators != null
+                && cachedAdministrators.stream().anyMatch(a -> a.id() == author.getId() && a.isModerator());
     }
 
     /**

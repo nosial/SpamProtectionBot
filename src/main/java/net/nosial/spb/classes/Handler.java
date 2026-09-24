@@ -1,7 +1,9 @@
 package net.nosial.spb.classes;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.objects.context.ConfigurationContext;
 import net.nosial.spb.objects.Language;
@@ -13,11 +15,15 @@ import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.botapimethods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditEphemeralMessageText;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberOwner;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -215,12 +221,12 @@ public abstract class Handler
     }
 
     /**
-     * Returns whether the message's author is an administrator in the message's chat, according
-     * to the cached administrator list.
+     * Returns whether the message's author is an administrator of the message's chat with the
+     * Change Group Information permission, according to the cached administrator list.
      *
      * @param context the per-update command context
      * @param message the incoming message
-     * @return {@code true} when the author is a cached administrator
+     * @return {@code true} when the author is a cached administrator who can change the chat's information
      */
     protected static boolean isChangeInformationAdministrator(HandlerContext context, Message message)
     {
@@ -228,35 +234,48 @@ public abstract class Handler
         {
             return false;
         }
-        return isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
+        return isChangeInformationAdministrator(context, message.getChatId(), message.getFrom().getId());
     }
 
     /**
-     * Returns whether the given user is a cached administrator of the given chat.
+     * Returns whether the given user is an administrator of the given chat with the Change Group
+     * Information permission, according to the cached administrator list.
      *
      * @param context the per-update command context
      * @param chatId the Telegram chat id
      * @param userId the Telegram user id to test
-     * @return {@code true} when the user is a cached administrator
+     * @return {@code true} when the user is a cached administrator who can change the chat's information
      */
-    protected static boolean isChatAdministrator(HandlerContext context, long chatId, long userId)
+    protected static boolean isChangeInformationAdministrator(HandlerContext context, long chatId, long userId)
     {
-        List<AdminInfo> administrators = context.chatAdmins().getIfPresent(chatId);
-        return administrators != null && administrators.stream().anyMatch(a -> a.id() == userId);
+        return hasAdministrator(context, chatId, userId, AdminInfo::canChangeInfo);
     }
 
     /**
-     * Returns whether the bot itself is an administrator in the given chat, according to the
-     * cached administrator list.
+     * Returns whether the given user is a cached moderator of the given chat: the owner, or an
+     * administrator who can delete messages or restrict members.
      *
      * @param context the per-update command context
      * @param chatId the Telegram chat id
-     * @return {@code true} when the bot is a cached administrator
+     * @param userId the Telegram user id to test
+     * @return {@code true} when the user is a cached moderator
+     */
+    protected static boolean isChatAdministrator(HandlerContext context, long chatId, long userId)
+    {
+        return hasAdministrator(context, chatId, userId, AdminInfo::isModerator);
+    }
+
+    /**
+     * Returns whether the bot itself is an administrator of the given chat with the Change Group
+     * Information permission, according to the cached administrator list.
+     *
+     * @param context the per-update command context
+     * @param chatId the Telegram chat id
+     * @return {@code true} when the bot is a cached administrator who can change the chat's information
      */
     protected static boolean isBotChangeInformationAdministrator(HandlerContext context, long chatId)
     {
-        List<AdminInfo> administrators = context.chatAdmins().getIfPresent(chatId);
-        return administrators != null && administrators.stream().anyMatch(a -> a.id() == context.botUserId());
+        return hasAdministrator(context, chatId, context.botUserId(), AdminInfo::canChangeInfo);
     }
 
     /**
@@ -273,11 +292,90 @@ public abstract class Handler
         {
             return false;
         }
-        List<AdminInfo> administrators = context.chatAdmins().getIfPresent(message.getChatId());
-        return administrators != null
-                && administrators.stream().anyMatch(a -> a.id() == message.getFrom().getId() && a.isOwner());
+        return hasAdministrator(context, message.getChatId(), message.getFrom().getId(), AdminInfo::isOwner);
     }
 
+    /**
+     * Returns whether the cached administrator list of a chat holds the given user with the given
+     * permission.
+     *
+     * @param context the per-update command context
+     * @param chatId the Telegram chat id
+     * @param userId the Telegram user id to test
+     * @param permission the permission the administrator must hold
+     * @return {@code true} when the user is a cached administrator holding the permission
+     */
+    private static boolean hasAdministrator(HandlerContext context, long chatId, long userId, Predicate<AdminInfo> permission)
+    {
+        List<AdminInfo> administrators = context.chatAdmins().getIfPresent(chatId);
+        return administrators != null && administrators.stream().anyMatch(a -> a.id() == userId && permission.test(a));
+    }
+
+    /**
+     * Fetches the administrator list of a chat from Telegram, bypassing the cache, and stores it in
+     * the cache for everything that follows.
+     *
+     * <p>Used before permission checks the user acts on directly, such as opening the settings menu,
+     * so a promotion or demotion is honoured at once instead of after the cached list expires.
+     * When the fetch fails the cached list, if any, is left in place and used instead.
+     *
+     * @param context the per-update command context
+     * @param chatId the Telegram chat id
+     */
+    protected static void refreshAdministrators(HandlerContext context, long chatId)
+    {
+        try
+        {
+            context.chatAdmins().put(chatId, loadAdministrators(context, chatId));
+        }
+        catch (Cache.LoadFailedException e)
+        {
+            // Already logged by the loader.
+        }
+    }
+
+    /**
+     * Fetches every administrator of the given chat from the Telegram API, with the permissions each
+     * holds. The result fills {@link HandlerContext#chatAdmins()}, which drives permission checks,
+     * moderation eligibility and private moderator-notification delivery without per-check API calls.
+     *
+     * @param context the per-update command context
+     * @param chatId the Telegram chat id
+     * @return the chat's administrators
+     * @throws Cache.LoadFailedException If the fetch failed, so the failure is not cached as an empty list
+     */
+    public static List<AdminInfo> loadAdministrators(HandlerContext context, long chatId)
+    {
+        List<ChatMember> members;
+        try
+        {
+            members = context.telegramClient().execute(GetChatAdministrators.builder().chatId(chatId).build());
+        }
+        catch (TelegramApiException | RuntimeException e)
+        {
+            // Any failure of the call itself, not only an API error, must stay uncached.
+            LOGGER.warn("Failed to load administrators for chat {}: {}", chatId, e.getMessage());
+            throw new Cache.LoadFailedException("Failed to load administrators for chat " + chatId, e);
+        }
+
+        List<AdminInfo> administrators = new ArrayList<>();
+        for (ChatMember member : members)
+        {
+            long userId = member.getUser().getId();
+            if (member instanceof ChatMemberOwner)
+            {
+                administrators.add(new AdminInfo(userId, true, true, true, true));
+            }
+            else if (member instanceof ChatMemberAdministrator administrator)
+            {
+                administrators.add(new AdminInfo(userId, false,
+                        Boolean.TRUE.equals(administrator.getCanDeleteMessages()),
+                        Boolean.TRUE.equals(administrator.getCanRestrictMembers()),
+                        Boolean.TRUE.equals(administrator.getCanChangeInfo())));
+            }
+        }
+        return administrators;
+    }
 
     /**
      * Resolves the effective language for a command update. In group chats returns the chat

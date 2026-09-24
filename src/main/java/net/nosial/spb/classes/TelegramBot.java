@@ -16,6 +16,7 @@ import org.telegram.telegrambots.meta.api.methods.GetMe;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +36,21 @@ import java.util.concurrent.TimeUnit;
 public final class TelegramBot implements TelegramConnection, AutoCloseable
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramBot.class);
+
+    /**
+     * The update types requested from Telegram: its default set plus {@code chat_member}.
+     *
+     * <p>An empty list would mean Telegram's defaults, which leave out {@code chat_member}. Join
+     * protection needs those updates in chats that hide join service messages, and administrator
+     * promotions and demotions arrive only through them, so they must be asked for by name.
+     * Message reactions stay excluded, as nothing handles them.
+     */
+    static final List<String> ALLOWED_UPDATES = List.of(
+            "message", "edited_message", "channel_post", "edited_channel_post",
+            "business_connection", "business_message", "edited_business_message", "deleted_business_messages",
+            "inline_query", "chosen_inline_result", "callback_query", "shipping_query", "pre_checkout_query",
+            "purchased_paid_media", "poll", "poll_answer", "my_chat_member", "chat_member", "chat_join_request",
+            "chat_boost", "removed_chat_boost");
 
     private final Configuration configuration;
     private final ObjectMapper objectMapper;
@@ -119,7 +135,7 @@ public final class TelegramBot implements TelegramConnection, AutoCloseable
         }
 
         this.session = this.application.registerBot(this.configuration.getApiKey(), () -> this.telegramUrl,
-                new DefaultGetUpdatesGenerator(), consumer);
+                new DefaultGetUpdatesGenerator(ALLOWED_UPDATES), consumer);
 
         LOGGER.info("Polling {}://{}:{}{} for updates",
                 this.configuration.getApiScheme(), this.configuration.getApiHost(), this.configuration.getApiPort(),

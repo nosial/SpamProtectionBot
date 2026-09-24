@@ -102,6 +102,34 @@ public final class Cache<K, V>
     }
 
     /**
+     * Returns the value for the given key, or a newly loaded and cached value, falling back to
+     * {@code fallback} when the loader reports a failure.
+     *
+     * <p>A loader signals a failed load (a database error, a Telegram API error, ...) by throwing
+     * {@link LoadFailedException}. That failure is not cached: the caller gets {@code fallback}
+     * for this one lookup and the next lookup tries again. A loader that swallowed the error and
+     * returned {@code null} would instead have the failure cached as a genuine absence until the
+     * entry expired.
+     *
+     * @param key the key to look up
+     * @param loader the function producing a value for a missing key
+     * @param fallback the value returned when the loader fails, may be {@code null}
+     * @return the cached value, the freshly loaded value, {@code null} when the loader found
+     *         nothing, or {@code fallback} when it failed
+     */
+    public V get(K key, Function<? super K, ? extends V> loader, V fallback)
+    {
+        try
+        {
+            return get(key, loader);
+        }
+        catch (LoadFailedException e)
+        {
+            return fallback;
+        }
+    }
+
+    /**
      * Returns the value for the given key, or {@code null} when absent (never loading).
      *
      * @param key the key to look up
@@ -181,5 +209,25 @@ public final class Cache<K, V>
             throw new IllegalArgumentException(name + " must be > 0");
         }
         return value;
+    }
+
+    /**
+     * Thrown by a loader to report that its source failed, as opposed to finding nothing. The key
+     * is left uncached, so the next lookup retries the load.
+     *
+     * @see #get(Object, Function, Object)
+     */
+    public static final class LoadFailedException extends RuntimeException
+    {
+        /**
+         * Creates a new load failure.
+         *
+         * @param message what failed to load
+         * @param cause the underlying failure
+         */
+        public LoadFailedException(String message, Throwable cause)
+        {
+            super(message, cause);
+        }
     }
 }

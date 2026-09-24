@@ -107,7 +107,10 @@ public final class NotificationSender
             {
                 for (AdminInfo admin : admins)
                 {
-                    destinations.add(admin.id());
+                    if (admin.isModerator())
+                    {
+                        destinations.add(admin.id());
+                    }
                 }
             }
             destinations.remove(context.botUserId());
@@ -145,7 +148,7 @@ public final class NotificationSender
             Set<Long> moderators = new LinkedHashSet<>();
             for (AdminInfo admin : admins)
             {
-                if (admin.id() != context.botUserId())
+                if (admin.id() != context.botUserId() && admin.isModerator())
                 {
                     moderators.add(admin.id());
                 }

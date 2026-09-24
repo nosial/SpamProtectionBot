@@ -56,14 +56,14 @@ public final class ChatConfigurationManager
      * Returns the configuration for the given Telegram chat id.
      *
      * <p>Cache misses load the configuration from the database. A transient database read failure
-     * is logged and reported as absent; a cached absence refreshes from the database once the cache entry expires.
+     * is logged and reported as absent for this lookup only; the next lookup retries the read.
      *
      * @param chatId the Telegram chat id
      * @return the configuration, or {@link Optional#empty()} when no record exists
      */
     public Optional<ChatConfiguration> getChatConfiguration(long chatId)
     {
-        return Optional.ofNullable(this.cache.get(chatId, this::loadChatConfiguration));
+        return Optional.ofNullable(this.cache.get(chatId, this::loadChatConfiguration, null));
     }
 
     /**
@@ -129,6 +129,31 @@ public final class ChatConfigurationManager
         this.database.execute("DELETE FROM chat_configuration WHERE chat_id = ?",
                 statement -> statement.setLong(1, chatId));
         this.cache.remove(chatId);
+    }
+
+    /**
+     * Moves a chat's configuration to a new chat id, for a group Telegram upgraded to a supergroup.
+     * Nothing moves when the old chat has no configuration or the new chat already has one.
+     *
+     * @param fromChatId the chat's previous id
+     * @param toChatId the chat's new id
+     * @throws DatabaseException If there is an error while updating the database.
+     */
+    public void migrateChat(long fromChatId, long toChatId) throws DatabaseException
+    {
+        this.database.execute("UPDATE chat_configuration SET chat_id = ? WHERE chat_id = ? "
+                + "AND NOT EXISTS (SELECT 1 FROM chat_configuration WHERE chat_id = ?)", statement ->
+        {
+            statement.setLong(1, toChatId);
+            statement.setLong(2, fromChatId);
+            statement.setLong(3, toChatId);
+        });
+        this.cache.remove(fromChatId);
+        this.cache.remove(toChatId);
+        // The reverse lookups map to chat ids; a mapping to the old id would be dropped as stale
+        // on its next use and miss once, so they are cleared outright for this rare event.
+        this.channelLinkCache.clear();
+        this.verificationCodeCache.clear();
     }
 
     /**
@@ -307,7 +332,7 @@ public final class ChatConfigurationManager
     public Optional<ChatConfiguration> getChatConfigurationByChannelLinkId(long channelLinkId)
     {
         Long chatId = this.channelLinkCache.get(channelLinkId,
-                key -> loadChatId("channel_link_id", key));
+                key -> loadChatId("channel_link_id", key), null);
         Optional<ChatConfiguration> configuration = chatId == null ? Optional.empty() : getChatConfiguration(chatId);
         if (configuration.isPresent() && Objects.equals(configuration.get().channelLinkId(), channelLinkId))
         {
@@ -329,7 +354,7 @@ public final class ChatConfigurationManager
     public Optional<ChatConfiguration> getChatConfigurationByChannelLinkVerificationCode(long verificationCode)
     {
         Long chatId = this.verificationCodeCache.get(verificationCode,
-                key -> loadChatId("channel_link_verification_code", key));
+                key -> loadChatId("channel_link_verification_code", key), null);
         Optional<ChatConfiguration> configuration = chatId == null ? Optional.empty() : getChatConfiguration(chatId);
         if (configuration.isPresent()
                 && Objects.equals(configuration.get().channelLinkVerificationCode(), verificationCode))
@@ -376,7 +401,7 @@ public final class ChatConfigurationManager
      *
      * @param column the column to match
      * @param value the value to match
-     * @return the owning chat id, or {@code null} when none or the read failed
+     * @return the owning chat id, or {@code null} when none
      */
     private Long loadChatId(String column, long value)
     {
@@ -388,7 +413,7 @@ public final class ChatConfigurationManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load chat configuration by {} {}: {}", column, value, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load chat configuration by " + column, e);
         }
     }
 
@@ -396,7 +421,7 @@ public final class ChatConfigurationManager
      * Loads a chat configuration from the database, used to fill cache misses.
      *
      * @param chatId the Telegram chat id
-     * @return the configuration, or {@code null} when no record exists or the read failed
+     * @return the configuration, or {@code null} when no record exists
      */
     private ChatConfiguration loadChatConfiguration(long chatId)
     {
@@ -408,7 +433,7 @@ public final class ChatConfigurationManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load chat configuration for chat {}: {}", chatId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load chat configuration " + chatId, e);
         }
     }
 }

@@ -58,14 +58,14 @@ public final class SecretaryConfigurationManager
      * Returns the configuration for the given Telegram user id.
      *
      * <p>Cache misses load the configuration from the database. A transient database read failure
-     * is logged and reported as absent; a cached absence refreshes from the database once the cache entry expires.
+     * is logged and reported as absent for this lookup only; the next lookup retries the read.
      *
      * @param userId the Telegram user id
      * @return the configuration, or {@link Optional#empty()} when no record exists
      */
     public Optional<SecretaryConfiguration> getSecretaryConfiguration(long userId)
     {
-        return Optional.ofNullable(this.cache.get(userId, this::loadSecretaryConfiguration));
+        return Optional.ofNullable(this.cache.get(userId, this::loadSecretaryConfiguration, null));
     }
 
     /**
@@ -116,7 +116,7 @@ public final class SecretaryConfigurationManager
     public Optional<Long> userIdByBusinessConnection(String businessConnectionId)
     {
         Objects.requireNonNull(businessConnectionId, "businessConnectionId must not be null");
-        Long userId = this.connectionCache.get(businessConnectionId, this::loadUserIdByBusinessConnection);
+        Long userId = this.connectionCache.get(businessConnectionId, this::loadUserIdByBusinessConnection, null);
         if (userId != null && getSecretaryConfiguration(userId).filter(
                 configuration -> businessConnectionId.equals(configuration.businessConnectionId())).isPresent())
         {
@@ -237,7 +237,7 @@ public final class SecretaryConfigurationManager
      * Loads the owner of a business connection from the database, used to fill cache misses.
      *
      * @param businessConnectionId the business connection id
-     * @return the owning user id, or {@code null} when absent or the read failed
+     * @return the owning user id, or {@code null} when absent
      */
     private Long loadUserIdByBusinessConnection(String businessConnectionId)
     {
@@ -250,7 +250,7 @@ public final class SecretaryConfigurationManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to resolve business connection {}: {}", businessConnectionId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to resolve business connection " + businessConnectionId, e);
         }
     }
 
@@ -258,7 +258,7 @@ public final class SecretaryConfigurationManager
      * Loads a secretary configuration from the database, used to fill cache misses.
      *
      * @param userId the Telegram user id
-     * @return the configuration, or {@code null} when no record exists or the read failed
+     * @return the configuration, or {@code null} when no record exists
      */
     private SecretaryConfiguration loadSecretaryConfiguration(long userId)
     {
@@ -277,7 +277,7 @@ public final class SecretaryConfigurationManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load secretary configuration for user {}: {}", userId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load secretary configuration " + userId, e);
         }
     }
 

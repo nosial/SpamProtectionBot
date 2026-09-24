@@ -9,7 +9,6 @@ import net.nosial.spb.objects.Language;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.exceptions.FederationException;
-import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.ChatInfo;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.database.UserIdentity;
@@ -18,15 +17,14 @@ import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.MessageHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.chat.Chat;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberOwner;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberUpdated;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,8 +43,15 @@ import java.util.Map;
  * <p>So it runs first, as the highest-priority observer, for every message — including commands,
  * which is why {@code /start} from a brand-new user already knows who they are. It never consumes
  * an update and never answers one; it only writes down what it saw.
+ *
+ * <p>It also keeps that bookkeeping current. A membership update that touches an administrator
+ * (the bot itself or anyone else) drops the chat's cached administrator list, and a basic group
+ * that Telegram upgrades to a supergroup has its stored configuration and language moved to the
+ * supergroup's new chat id. Telegram performs that upgrade on its own, for example when a bot's
+ * individual administrator rights are edited in a basic group.
  */
-@UpdateHandler(value = UpdateType.MESSAGE, mode = DispatchMode.OBSERVE, priority = 1000)
+@UpdateHandler(value = {UpdateType.MESSAGE, UpdateType.MY_CHAT_MEMBER, UpdateType.CHAT_MEMBER},
+        mode = DispatchMode.OBSERVE, priority = 1000)
 public final class RegistrationHandler extends Handler
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationHandler.class);
@@ -60,10 +65,30 @@ public final class RegistrationHandler extends Handler
     public void handle(HandlerContext context)
     {
         Update update = context.update();
+        if (update.hasMyChatMember())
+        {
+            forgetAdministratorsOnChange(context, update.getMyChatMember());
+            return;
+        }
+        if (update.hasChatMember())
+        {
+            forgetAdministratorsOnChange(context, update.getChatMember());
+            return;
+        }
+
         Message message = update.getMessage();
         if (message == null)
         {
             return;
+        }
+
+        if (message.getMigrateToChatId() != null)
+        {
+            migrateChat(context, message.getChatId(), message.getMigrateToChatId());
+        }
+        else if (message.getMigrateFromChatId() != null)
+        {
+            migrateChat(context, message.getMigrateFromChatId(), message.getChatId());
         }
 
         User author = message.getFrom();
@@ -128,6 +153,69 @@ public final class RegistrationHandler extends Handler
     }
 
     /**
+     * Drops the cached administrator list of a group when a membership change gains or loses an
+     * administrator, so the next permission check reads Telegram's current list instead of one
+     * that is up to two minutes out of date.
+     *
+     * @param context the per-update context
+     * @param change the membership change
+     */
+    private static void forgetAdministratorsOnChange(HandlerContext context, ChatMemberUpdated change)
+    {
+        String chatType = change.getChat().getType();
+        if (!chatType.equals("group") && !chatType.equals("supergroup"))
+        {
+            return;
+        }
+
+        if (isAdministrator(change.getOldChatMember()) || isAdministrator(change.getNewChatMember()))
+        {
+            context.chatAdmins().remove(change.getChat().getId());
+        }
+    }
+
+    /**
+     * Returns whether a chat member is the chat's owner or one of its administrators.
+     *
+     * @param member the chat member, may be {@code null}
+     * @return {@code true} for an owner or administrator
+     */
+    private static boolean isAdministrator(ChatMember member)
+    {
+        return member instanceof ChatMemberOwner || member instanceof ChatMemberAdministrator;
+    }
+
+    /**
+     * Carries a basic group's stored state over to the supergroup Telegram upgraded it to.
+     *
+     * <p>The upgrade gives the chat a new id, and Telegram reports it twice: a message in the old
+     * group naming the new id, and a message in the new supergroup naming the old one. Either may
+     * arrive first, so the move is idempotent and never overwrites state the new id already has.
+     * Without it the upgraded group would look like a chat the bot has never been set up in.
+     *
+     * @param context the per-update context
+     * @param fromChatId the basic group's id
+     * @param toChatId the supergroup's id
+     */
+    private static void migrateChat(HandlerContext context, long fromChatId, long toChatId)
+    {
+        try
+        {
+            context.managers().chatConfigurations().migrateChat(fromChatId, toChatId);
+            context.managers().languagePreferences().migrateChat(fromChatId, toChatId);
+            LOGGER.info("Chat {} was upgraded to supergroup {}; moved its configuration", fromChatId, toChatId);
+        }
+        catch (DatabaseException e)
+        {
+            LOGGER.warn("Failed to move the configuration of chat {} to supergroup {}: {}",
+                    fromChatId, toChatId, e.getMessage());
+        }
+        context.chatAdmins().remove(fromChatId);
+        context.chatAdmins().remove(toChatId);
+        context.chatInfo().remove(fromChatId);
+    }
+
+    /**
      * Ensures the administrator list for a group or supergroup is cached, refetching it when
      * absent or expired.
      *
@@ -142,15 +230,8 @@ public final class RegistrationHandler extends Handler
             return;
         }
 
-        long chatId = chat.getId();
-        try
-        {
-            context.chatAdmins().get(chatId, key -> loadAdministrators(context, key));
-        }
-        catch (RuntimeException e)
-        {
-            LOGGER.warn("Failed to refresh administrators for chat {}: {}", chatId, e.getMessage());
-        }
+        // A failed fetch is logged by the loader and left uncached, so the next update retries.
+        context.chatAdmins().get(chat.getId(), key -> loadAdministrators(context, key), null);
     }
 
     /**
@@ -278,47 +359,6 @@ public final class RegistrationHandler extends Handler
             addUser(users, replyTo.getViaBot());
         }
         return new ArrayList<>(users.values());
-    }
-
-    /**
-     * Fetches the moderator list for the given chat from the Telegram API: every chat owner plus
-     * every administrator who can delete messages or restrict members. The cache drives moderation
-     * eligibility and private moderator-notification delivery without per-notification API calls.
-     *
-     * @param context the per-update command context
-     * @param chatId the Telegram chat id
-     * @return the cached administrator info, or {@code null} when the fetch failed (then
-     * nothing is cached and the next update retries)
-     */
-    private static List<AdminInfo> loadAdministrators(HandlerContext context, Long chatId)
-    {
-        try
-        {
-            List<ChatMember> members = context.telegramClient().execute(GetChatAdministrators.builder().chatId(chatId).build());
-            List<AdminInfo> administrators = new ArrayList<>();
-            for (ChatMember member : members)
-            {
-                long userId = member.getUser().getId();
-                if (member instanceof ChatMemberOwner)
-                {
-                    administrators.add(new AdminInfo(userId, true, true, true));
-                }
-                else if (member instanceof ChatMemberAdministrator administrator
-                        && (Boolean.TRUE.equals(administrator.getCanDeleteMessages())
-                        || Boolean.TRUE.equals(administrator.getCanRestrictMembers())))
-                {
-                    administrators.add(new AdminInfo(userId, false,
-                            Boolean.TRUE.equals(administrator.getCanDeleteMessages()),
-                            Boolean.TRUE.equals(administrator.getCanRestrictMembers())));
-                }
-            }
-            return administrators;
-        }
-        catch (TelegramApiException e)
-        {
-            LOGGER.warn("Failed to load administrators for chat {}: {}", chatId, e.getMessage());
-            return null;
-        }
     }
 
     /**

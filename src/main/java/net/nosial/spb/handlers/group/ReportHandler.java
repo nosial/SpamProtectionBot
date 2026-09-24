@@ -488,7 +488,7 @@ public final class ReportHandler extends Handler
         }
 
         long targetMessageId = extractForwardMessageId(message);
-        boolean reporterIsAdmin = isChangeInformationAdministrator(context, message);
+        boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessageId, authorId, ReportAttachments.forReport(context, message), reporterIsAdmin);
 
         InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context.languages(), resolveLanguage(context, message), session);
@@ -517,7 +517,7 @@ public final class ReportHandler extends Handler
     private void startDialog(HandlerContext context, Message message, Message targetMessage, boolean ephemeral) throws TelegramApiException
     {
         Integer messageThreadId = targetMessage.getMessageThreadId();
-        boolean reporterIsAdmin = isChangeInformationAdministrator(context, message);
+        boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessage,
                 ReportAttachments.forReport(context, targetMessage), reporterIsAdmin, ephemeral);
 
@@ -558,7 +558,7 @@ public final class ReportHandler extends Handler
                                     IncidentType incidentType, String comment) throws TelegramApiException
     {
         Integer messageThreadId = targetMessage.getMessageThreadId();
-        boolean reporterIsAdmin = isChangeInformationAdministrator(context, message);
+        boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = new ReportContext(null, message.getFrom().getId(), message.getChatId(),
                 targetMessage.getMessageId(), targetMessage.getFrom().getId(), MessageContent.textOrCaption(targetMessage),
                 ReportAttachments.forReport(context, targetMessage), FlatMetadata.of(targetMessage), null, true,

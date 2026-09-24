@@ -37,7 +37,7 @@ public final class SecretaryContactManager
     {
         Objects.requireNonNull(businessConnectionId, "businessConnectionId must not be null");
         return Optional.ofNullable(this.cache.get(cacheKey(businessConnectionId, id),
-                ignored -> loadSecretaryContact(businessConnectionId, id)));
+                ignored -> loadSecretaryContact(businessConnectionId, id), null));
     }
 
     /**
@@ -115,7 +115,7 @@ public final class SecretaryContactManager
      * @param businessConnectionId the unique identifier of the business connection
      * @param id the unique identifier of the secretary contact
      * @return the {@code SecretaryContact} corresponding to the given identifiers,
-     *         or {@code null} if no matching contact is found or in case of a database access failure
+     *         or {@code null} if no matching contact is found
      */
     private SecretaryContact loadSecretaryContact(String businessConnectionId, long id)
     {
@@ -134,7 +134,7 @@ public final class SecretaryContactManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load secretary contact {} in connection {}: {}", id, businessConnectionId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load secretary contact " + id, e);
         }
     }
 

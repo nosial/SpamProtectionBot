@@ -202,7 +202,7 @@ public final class ChannelConnectHandler extends Handler
         if (("group".equals(chatType) || "supergroup".equals(chatType)) && message.getFrom() != null)
         {
             List<AdminInfo> administrators = context.chatAdmins().getIfPresent(message.getChatId());
-            if (administrators != null && administrators.stream().anyMatch(a -> a.id() == message.getFrom().getId()))
+            if (administrators != null && administrators.stream().anyMatch(a -> a.id() == message.getFrom().getId() && a.isModerator()))
             {
                 return message.getChatId();
             }

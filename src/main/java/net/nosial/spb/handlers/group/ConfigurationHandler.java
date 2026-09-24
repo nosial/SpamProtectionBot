@@ -25,6 +25,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditEphemeral
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberOwner;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -91,9 +92,19 @@ public final class ConfigurationHandler extends Handler
             answer(context, callbackQuery);
             return;
         }
-        if (requiresChatOwner(action) && !isChatOwner(context, session))
+        // Checked live on every change rather than once when the menu opened, so an administrator
+        // who loses the permission cannot keep using a menu they still have on screen.
+        if (requiresChatOwner(action))
         {
-            answerAlert(context, callbackQuery, context.languages().get(sessionLanguage(context, session.userId()), "configuration", "owner_only_alert"));
+            if (!isChatOwner(context, session))
+            {
+                answerAlert(context, callbackQuery, context.languages().get(sessionLanguage(context, session.userId()), "configuration", "owner_only_alert"));
+                return;
+            }
+        }
+        else if (!isNavigationAction(action) && !canChangeInfo(context, session))
+        {
+            answerAlert(context, callbackQuery, context.languages().get(sessionLanguage(context, session.userId()), "configuration", "change_info_only_alert"));
             return;
         }
 
@@ -513,7 +524,7 @@ public final class ConfigurationHandler extends Handler
      */
     private static boolean requiresChatOwner(String action)
     {
-        return "enable".equals(action) || "disable".equals(action) || "language".equals(action) || action.startsWith("set_language:");
+        return "enable".equals(action) || "disable".equals(action);
     }
 
     /**
@@ -571,18 +582,58 @@ public final class ConfigurationHandler extends Handler
      */
     private static boolean isChatOwner(HandlerContext context, ConfigurationContext session)
     {
+        ChatMember member = fetchMember(context, session);
+        return member != null && isChatOwner(member);
+    }
+
+    /**
+     * Determines if the user may change the chat's settings: the owner, or an administrator with
+     * the Change Group Information permission. Checked against Telegram, not the cached
+     * administrator list.
+     *
+     * @param context the per-update command context
+     * @param session the configuration session naming the chat and the user
+     * @return {@code true} when the user may change settings; {@code false} otherwise or when the
+     *         check fails
+     */
+    private static boolean canChangeInfo(HandlerContext context, ConfigurationContext session)
+    {
+        return canChangeInfo(fetchMember(context, session));
+    }
+
+    /**
+     * Determines if the given chat member may change the chat's settings.
+     *
+     * @param member the chat member, may be {@code null}
+     * @return {@code true} for the owner and for administrators who can change the chat's information
+     */
+    static boolean canChangeInfo(ChatMember member)
+    {
+        return member instanceof ChatMemberOwner
+                || (member instanceof ChatMemberAdministrator administrator
+                && Boolean.TRUE.equals(administrator.getCanChangeInfo()));
+    }
+
+    /**
+     * Fetches the session user's current membership in the session's chat from Telegram.
+     *
+     * @param context the per-update command context
+     * @param session the configuration session naming the chat and the user
+     * @return the membership, or {@code null} when it could not be fetched
+     */
+    private static ChatMember fetchMember(HandlerContext context, ConfigurationContext session)
+    {
         try
         {
-            ChatMember member = context.telegramClient().execute(GetChatMember.builder()
+            return context.telegramClient().execute(GetChatMember.builder()
                     .chatId(session.chatId())
                     .userId(session.userId())
                     .build());
-            return isChatOwner(member);
         }
         catch (TelegramApiException e)
         {
-            LOGGER.warn("Unable to verify owner {} for chat {}: {}", session.userId(), session.chatId(), e.getMessage());
-            return false;
+            LOGGER.warn("Unable to verify permissions of {} in chat {}: {}", session.userId(), session.chatId(), e.getMessage());
+            return null;
         }
     }
 

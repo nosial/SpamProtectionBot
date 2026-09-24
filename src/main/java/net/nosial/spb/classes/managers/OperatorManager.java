@@ -60,14 +60,14 @@ public final class OperatorManager
      *
      * <p>Cache misses load the identity from the database, so the returned value always reflects
      * what was last durably written. A transient database read failure is logged and reported as
-     * absent; a cached absence refreshes from the database once the cache entry expires.
+     * absent for this lookup only; the next lookup retries the read.
      *
      * @param userId the Telegram user id
      * @return the operator identity, or {@link Optional#empty()} when no record exists
      */
     public Optional<OperatorIdentity> getOperator(long userId)
     {
-        OperatorIdentity identity = this.cache.get(userId, this::loadOperator);
+        OperatorIdentity identity = this.cache.get(userId, this::loadOperator, null);
         return Optional.ofNullable(identity);
     }
 
@@ -176,7 +176,7 @@ public final class OperatorManager
         catch (DatabaseException e)
         {
             LOGGER.warn("Failed to load operator identity for user {}: {}", userId, e.getMessage());
-            return null;
+            throw new Cache.LoadFailedException("Failed to load operator " + userId, e);
         }
     }
 
