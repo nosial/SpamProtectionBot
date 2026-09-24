@@ -2,6 +2,7 @@ package net.nosial.spb;
 
 import net.nosial.jfederation.records.OperatorRecord;
 import net.nosial.jfederation.records.ServerInformation;
+import net.nosial.spb.utilities.HostCanonicalizer;
 import net.nosial.spb.classes.BotServices;
 import net.nosial.spb.classes.CommandLineOptions;
 import net.nosial.spb.classes.Configuration;
@@ -149,6 +150,12 @@ public final class Main implements AutoCloseable
         {
             throw new IllegalStateException("the bot has already started");
         }
+
+        // Replace the bundled TLD snapshot with IANA's current list. It runs in the background: the
+        // bundled list serves until then, and stays in use if the fetch fails.
+        Thread tldRefresh = new Thread(HostCanonicalizer::refreshTlds, "tld-refresh");
+        tldRefresh.setDaemon(true);
+        tldRefresh.start();
 
         this.database = new Database(this.databasePath);
         Set<String> tables = this.database.tables();
