@@ -19,7 +19,7 @@ general:
     current: "当前语言：{0} {1}"
     changed: "语言已更改为 {0} {1}"
     select: "选择您的语言："
-    group_owner_only: "只有群组所有者可以更改语言。"
+    group_admin_only: "只有可以更改群组信息的群组管理员才能更改语言。"
 
 help:
   categories_header: "分类"
@@ -126,6 +126,7 @@ secretary_settings:
 
 configuration:
   owner_only_alert: "只有群组所有者可以启用或禁用机器人。"
+  change_info_only_alert: "只有可以更改群组信息的群组管理员才能更改这些设置。"
   session_expired: "此配置会话已过期或不再有效。请在群组中重新发送 /start 以配置机器人。"
   toast_enabled: "保护已启用。"
   toast_disabled: "保护已禁用。"

@@ -19,7 +19,7 @@ general:
     current: "Current language: {0} {1}"
     changed: "Language changed to {0} {1}"
     select: "Select your language:"
-    group_owner_only: "Only the group owner can change the language."
+    group_admin_only: "Only group administrators who can change group information can change the language."
 
 help:
   categories_header: "Categories"
@@ -126,6 +126,7 @@ secretary_settings:
   not_enabled: "\u26A0\uFE0F <b>Secretary mode is not enabled.</b>\n\nOpen Telegram \u2192 Settings \u2192 Business, connect this bot to your account, and grant it permission to delete messages. This restriction is removed and your settings are shown as soon as the connection exists."
 configuration:
   owner_only_alert: "Only the group owner can enable or disable the bot."
+  change_info_only_alert: "Only group administrators who can change group information can change these settings."
   session_expired: "This configuration session has expired or is no longer valid. Send /start in the group again to configure the bot."
   toast_enabled: "Protection enabled."
   toast_disabled: "Protection disabled."

@@ -19,7 +19,7 @@ general:
     current: "Idioma actual: {0} {1}"
     changed: "Idioma cambiado a {0} {1}"
     select: "Seleccione su idioma:"
-    group_owner_only: "Solo el propietario del grupo puede cambiar el idioma."
+    group_admin_only: "Solo los administradores del grupo que pueden cambiar la información del grupo pueden cambiar el idioma."
 
 help:
   categories_header: "Categorías"
@@ -126,6 +126,7 @@ secretary_settings:
 
 configuration:
   owner_only_alert: "Solo el propietario del grupo puede habilitar o deshabilitar el bot."
+  change_info_only_alert: "Solo los administradores del grupo que pueden cambiar la información del grupo pueden cambiar esta configuración."
   session_expired: "Esta sesión de configuración ha expirado o ya no es válida. Envíe /start en el grupo de nuevo para configurar el bot."
   toast_enabled: "Protección habilitada."
   toast_disabled: "Protección deshabilitada."
