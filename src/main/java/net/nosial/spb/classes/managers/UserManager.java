@@ -163,8 +163,7 @@ public final class UserManager
             List<Long> owners = new ArrayList<>();
             if (normalizedUsername != null)
             {
-                try (PreparedStatement select = connection.prepareStatement(
-                        "SELECT id FROM users WHERE username = ? AND id != ?"))
+                try (PreparedStatement select = connection.prepareStatement("SELECT id FROM users WHERE username = ? AND id != ?"))
                 {
                     select.setString(1, normalizedUsername);
                     select.setLong(2, identity.userId());
@@ -176,8 +175,7 @@ public final class UserManager
                         }
                     }
                 }
-                try (PreparedStatement release = connection.prepareStatement(
-                        "UPDATE users SET username = NULL WHERE username = ? AND id != ?"))
+                try (PreparedStatement release = connection.prepareStatement("UPDATE users SET username = NULL WHERE username = ? AND id != ?"))
                 {
                     release.setString(1, normalizedUsername);
                     release.setLong(2, identity.userId());
@@ -218,10 +216,9 @@ public final class UserManager
     public void deleteUser(long userId) throws DatabaseException
     {
         UserIdentity previous = getUser(userId).orElse(null);
-
         this.database.execute("DELETE FROM users WHERE id = ?", statement -> statement.setLong(1, userId));
-
         this.byIdCache.remove(userId);
+
         if (previous != null && previous.username() != null)
         {
             this.byUsernameCache.remove(normalizeUsername(previous.username()));
