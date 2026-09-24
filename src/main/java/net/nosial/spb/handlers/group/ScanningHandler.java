@@ -131,6 +131,14 @@ public final class ScanningHandler extends Handler
             return;
         }
 
+        // A member joining or leaving is posted as a service message with no content. Join
+        // protection owns joins; scanning it here would only query the member a second time and,
+        // under Passive, post an empty #SCAN_MATCH beside join protection's own notification.
+        if (isMembershipServiceMessage(message))
+        {
+            return;
+        }
+
         MediaGroupState mediaGroup = UpdateDispatcher.mediaGroup(context, message);
         if (isRestrictedMediaGroup(mediaGroup, message))
         {
@@ -233,13 +241,16 @@ public final class ScanningHandler extends Handler
             }
         }
 
-        if (behavior == ScanningBehavior.PASSIVE && configuration.scanningNotificationsEnabled() && !suggestedActionStateChanged(context, message, contentSuggestion, entitySuggestion))
+        if (behavior == ScanningBehavior.PASSIVE)
         {
-            return;
-        }
-        if (behavior == ScanningBehavior.PASSIVE && !configuration.scanningNotificationsEnabled())
-        {
-            return;
+            if (!configuration.scanningNotificationsEnabled())
+            {
+                return;
+            }
+            if (!passiveObservationDue(context, message, contentSuggestion, entitySuggestion))
+            {
+                return;
+            }
         }
         if (behavior != ScanningBehavior.PASSIVE && deletedMessageIds.isEmpty() && !entityActionApplied && !textRestrictionApplied)
         {
@@ -296,6 +307,18 @@ public final class ScanningHandler extends Handler
                         host, message.getMessageId(), message.getChatId(), e.getMessage());
             }
         }
+    }
+
+    /**
+     * Returns whether the message is a service message announcing members joining or leaving.
+     *
+     * @param message the incoming message
+     * @return {@code true} when the message lists new chat members or a departed one
+     */
+    static boolean isMembershipServiceMessage(Message message)
+    {
+        return (message.getNewChatMembers() != null && !message.getNewChatMembers().isEmpty())
+                || message.getLeftChatMember() != null;
     }
 
     /**
@@ -393,6 +416,27 @@ public final class ScanningHandler extends Handler
         String key = CAUTION_USER_CACHE_PREFIX + message.getChatId() + ":" + message.getFrom().getId();
         String cached = (String) context.cache().getIfPresent(key);
         return "CAUTION".equals(cached);
+    }
+
+    /**
+     * Decides whether a Passive chat should be notified about a scanned message.
+     *
+     * <p>The member's result is recorded for every message, flagged or not, so a member flagged
+     * again after a clean message is reported again. Only a flag that differs from the member's
+     * previous result is worth a notification: a member's first message and a flagged member coming
+     * back clean also change the result, and used to post a #SCAN_MATCH with an empty
+     * recommendation.
+     *
+     * @param context the context holding the per-member result
+     * @param message the scanned message
+     * @param contentSuggestion what the content scan suggested, or {@code null} when nothing
+     * @param entitySuggestion what the author's entity query suggested, or {@code null} when nothing
+     * @return {@code true} when the notification should be sent
+     */
+    static boolean passiveObservationDue(HandlerContext context, Message message, SuggestedAction contentSuggestion, SuggestedAction entitySuggestion)
+    {
+        boolean changed = suggestedActionStateChanged(context, message, contentSuggestion, entitySuggestion);
+        return changed && (contentSuggestion != null || entitySuggestion != null);
     }
 
     /**
