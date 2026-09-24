@@ -29,6 +29,11 @@ services:
     restart: unless-stopped
     init: true
     stop_grace_period: 45s
+    # Where the bot reads its configuration and keeps its database, inside the container. These are
+    # the image's defaults; change them together with the volume mounts below.
+    environment:
+      SPB_CONFIG: /app/configuration.yml
+      SPB_DATABASE: /data/database.db
     volumes:
       - ./configuration.yml:/app/configuration.yml:ro
       - spb-data:/data

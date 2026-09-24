@@ -47,13 +47,17 @@ VOLUME ["/data"]
 
 STOPSIGNAL SIGTERM
 
+# The configuration and database paths are read from the environment rather than passed as
+# arguments, so `docker run -e` or a compose file's `environment` can change them without replacing
+# the entrypoint. Arguments given after the image name still take precedence over these.
+ENV SPB_CONFIG=/app/configuration.yml \
+    SPB_DATABASE=/data/database.db
+
 ENTRYPOINT ["java", \
     "-XX:MaxRAMPercentage=75.0", \
     "-XX:+ExitOnOutOfMemoryError", \
     "--enable-native-access=ALL-UNNAMED", \
-    "-jar", "/app/spb.jar", \
-    "--config", "/app/configuration.yml", \
-    "--database", "/data/database.db"]
+    "-jar", "/app/spb.jar"]
 
 # There is no HTTP endpoint to probe — the bot only long-polls Telegram outbound — so this is a
 # basic liveness check confirming the JVM is still running, not a deep readiness check.
