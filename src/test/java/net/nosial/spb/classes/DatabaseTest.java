@@ -390,6 +390,66 @@ class DatabaseTest
         }
 
         @Test
+        @DisplayName("transactions that read before writing wait for each other instead of failing busy")
+        void readThenWriteTransactionsDoNotFailBusy() throws Exception
+        {
+            // Shaped like UserManager.saveUser: a SELECT, then writes, in one transaction. Under a
+            // deferred transaction the read-to-write upgrade fails with SQLITE_BUSY at once,
+            // without honouring the busy timeout, whenever another writer committed in between.
+            int threads = 8;
+            int perThread = 25;
+
+            try (Database database = open())
+            {
+                insertUser(database, 1, "alpha");
+
+                ExecutorService executor = Executors.newFixedThreadPool(threads);
+                CountDownLatch start = new CountDownLatch(1);
+                AtomicInteger failures = new AtomicInteger();
+
+                for (int t = 0; t < threads; t++)
+                {
+                    executor.submit(() ->
+                    {
+                        try
+                        {
+                            start.await();
+                            for (int i = 0; i < perThread; i++)
+                            {
+                                database.transaction(connection ->
+                                {
+                                    try (var select = connection.prepareStatement("SELECT username FROM users WHERE id = 1");
+                                         var result = select.executeQuery())
+                                    {
+                                        result.next();
+                                    }
+                                    try (Statement update = connection.createStatement())
+                                    {
+                                        update.executeUpdate("UPDATE users SET first_name = first_name || 'x' WHERE id = 1");
+                                    }
+                                    return null;
+                                });
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            failures.incrementAndGet();
+                        }
+                    });
+                }
+
+                start.countDown();
+                executor.shutdown();
+                assertTrue(executor.awaitTermination(45, TimeUnit.SECONDS));
+
+                assertEquals(0, failures.get(), "no transaction should have failed busy");
+                assertEquals("First".length() + threads * perThread, database.queryOne(
+                        "SELECT length(first_name) FROM users WHERE id = 1", null,
+                        results -> results.getInt(1)).orElseThrow());
+            }
+        }
+
+        @Test
         @DisplayName("readers run beside a writer")
         void readersRunBesideWriters() throws Exception
         {

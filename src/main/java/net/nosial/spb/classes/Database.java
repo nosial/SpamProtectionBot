@@ -130,6 +130,10 @@ public final class Database implements AutoCloseable
         sqliteProperties.setProperty("busy_timeout", String.valueOf(BUSY_TIMEOUT_MILLIS));
         sqliteProperties.setProperty("temp_store", "MEMORY");
         sqliteProperties.setProperty("foreign_keys", "true");
+        // Transactions take the write lock at BEGIN. A deferred transaction that reads and then
+        // writes must upgrade its lock mid-flight, and under WAL that upgrade fails with
+        // SQLITE_BUSY at once, ignoring the busy timeout, if another writer committed meanwhile.
+        sqliteProperties.setProperty("transaction_mode", "IMMEDIATE");
         config.setDataSourceProperties(sqliteProperties);
 
         try
