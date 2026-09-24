@@ -346,7 +346,7 @@ public final class ReportHandler extends Handler
 
         if (!context.federation().isAvailable())
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "federation_not_configured"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "federation_not_configured"), true, null);
             return;
         }
 
@@ -354,36 +354,36 @@ public final class ReportHandler extends Handler
         // without client permissions, regardless of what it allows anonymously.
         if (!context.federation().isAuthenticated())
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "federation_not_authorized"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "federation_not_authorized"), true, null);
             return;
         }
 
         if (!message.isReply() || message.getReplyToMessage() == null)
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "usage"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "usage"), true, null);
             return;
         }
 
         Message targetMessage = message.getReplyToMessage();
         if (MessageHelper.isReplyToTopicHeader(message))
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "usage"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "usage"), true, null);
             return;
         }
         User targetAuthor = targetMessage.getFrom();
         if (targetAuthor == null)
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "cannot_be_reported"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "cannot_be_reported"), true, null);
             return;
         }
         if (targetAuthor.getId().longValue() == message.getFrom().getId().longValue())
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "self_report"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "self_report"), true, null);
             return;
         }
         if (isChatAdministrator(context, message.getChatId(), targetAuthor.getId().longValue()))
         {
-            sendText(context, message, context.languages().get(resolveLanguage(context, message), "report", "admin_report"), true);
+            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "admin_report"), true, null);
             return;
         }
 

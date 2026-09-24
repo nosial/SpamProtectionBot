@@ -433,31 +433,6 @@ public abstract class Handler
     }
 
     /**
-     * Sends a text message to a specified chat or user, using the provided context and message details.
-     *
-     * @param context the {@code HandlerContext} instance used to interact with the Telegram client
-     * @param message the {@code Message} object containing chat and user details
-     * @param text the {@code String} message to send
-     * @param ephemeral a {@code boolean} indicating whether the message should be sent ephemerally
-     * @throws TelegramApiException if there is an error while executing the Telegram API request
-     */
-    protected static void sendText(HandlerContext context, Message message, String text,
-                                    boolean ephemeral) throws TelegramApiException
-    {
-        boolean useEphemeral = ephemeral || (isGroupChat(message) && message.getFrom() != null);
-        boolean hasFrom = message.getFrom() != null;
-        var builder = SendMessage.builder()
-                .chatId(String.valueOf(message.getChatId()))
-                .messageThreadId(message.getMessageThreadId())
-                .text(text);
-        if (useEphemeral && hasFrom)
-        {
-            builder.receiverUserId(message.getFrom().getId());
-        }
-        context.telegramClient().execute(builder.build());
-    }
-
-    /**
      * Sends a reply to a given message with HTML content.
      *
      * @param context the handler context associated with the current execution

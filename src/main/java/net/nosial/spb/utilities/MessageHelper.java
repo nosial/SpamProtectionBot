@@ -47,8 +47,12 @@ public final class MessageHelper
      */
     public static boolean isReplyToTopicHeader(Message message)
     {
+        // Outside forum topics Telegram also sets message_thread_id, to the first message of the
+        // reply chain, so a plain reply to a message in an ordinary group matches the thread id
+        // just the same. Only a message inside a forum topic can be attached to a topic header.
         Message replyTo = message.getReplyToMessage();
-        if (replyTo == null || replyTo.getMessageId() == null || message.getMessageThreadId() == null)
+        if (!message.isTopicMessage() || replyTo == null || replyTo.getMessageId() == null
+                || message.getMessageThreadId() == null)
         {
             return false;
         }
