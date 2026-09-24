@@ -49,7 +49,13 @@ class LanguageManagerTest
                     .map(Language::code)
                     .toList();
 
-            assertEquals(List.of("en", "zz"), codes);
+            // Not pinned to an exact list: shipped translations come and go without this test
+            // needing to know about them.
+            assertEquals(codes.stream().sorted().distinct().toList(), codes, "codes should be sorted and unique");
+            assertTrue(codes.contains("en"), "the shipped default should be offered: " + codes);
+            assertTrue(codes.contains("zz"), "the test-only fixture should be offered: " + codes);
+            codes.forEach(code -> assertNotEquals(null, LanguageManagerTest.this.languages.resolve(code),
+                    "offered language " + code + " should resolve"));
         }
 
         @Test
