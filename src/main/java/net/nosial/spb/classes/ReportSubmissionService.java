@@ -15,6 +15,7 @@ import net.nosial.spb.objects.ReportAttachment;
 import net.nosial.spb.objects.ReportActionState;
 import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.context.ReportContext;
+import net.nosial.spb.utilities.EntityPublisher;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.HtmlEscape;
 import org.slf4j.Logger;
@@ -181,16 +182,15 @@ public final class ReportSubmissionService
 
         try
         {
-            if (configuration.privacyMode())
-            {
-                ensureReportingEntity(context.federation(), session.targetAuthorId());
-            }
+            // A report cannot be submitted against an entity unknown to the server. Whoever started
+            // the report has usually published the target with its properties already; this bare
+            // publish only guarantees it exists, and never erases what that earlier publish sent.
+            EntityPublisher.publish(context, session.chatId(), session.targetAuthorId(), null);
 
             ReportSubmission submission = context.federation().submitReport(accessToken, reportingEntity, evidence, session.incidentType(), reportMessage);
             uploadAttachments(context, accessToken, submission, session, configuration.privacyMode());
             LOGGER.debug("Report submitted successfully: uuid={}", submission.getReport().uuid());
-            if (origin.notifiesModerators() && configuration.reportingNotificationsEnabled()
-                    && !ReportOrigin.FALSE_REPORT_EVIDENCE_TAG.equals(origin.evidenceTag()))
+            if (origin.notifiesModerators() && configuration.reportingNotificationsEnabled() && !ReportOrigin.FALSE_REPORT_EVIDENCE_TAG.equals(origin.evidenceTag()))
             {
                 String reportUuid = submission.getReport().uuid();
                 String html = notificationHtml(context.languages(), lang, context, session, reportUuid, reportMessage);
@@ -215,6 +215,17 @@ public final class ReportSubmissionService
         }
     }
 
+    /**
+     * Generates an HTML notification string for a report submission based on the provided context, language, and report details.
+     *
+     * @param lm the LanguageManager instance used to retrieve language-specific strings
+     * @param lang the Language instance representing the target language for the notification
+     * @param context the HandlerContext providing access to chat and database information
+     * @param session the ReportContext containing details about the report session
+     * @param reportUuid the unique identifier of the report
+     * @param reportMessage an optional message accompanying the report
+     * @return a formatted HTML string representing the notification for the report submission
+     */
     public static String notificationHtml(LanguageManager lm, Language lang, HandlerContext context,
                                    ReportContext session, String reportUuid, String reportMessage)
     {
@@ -232,21 +243,6 @@ public final class ReportSubmissionService
                         ? "comment" : "comment_none", reportMessage != null && !reportMessage.isBlank()
                         ? NotificationFormatter.escapeAndTruncate(reportMessage, 800, lang) : reportMessage) +
                 '\n';
-    }
-
-    /**
-     * Creates the report target with no metadata when privacy mode has intentionally skipped
-     * routine entity synchronization. A report cannot be submitted for an entity unknown to the
-     * Federation server, while this push discloses only the target identifier the reporter chose.
-     */
-    public static void ensureReportingEntity(FederationService federation, long targetAuthorId) throws FederationException
-    {
-        if (!federation.isAuthenticated())
-        {
-            return;
-        }
-
-        federation.publishEntity("telegram.org", String.valueOf(targetAuthorId), null);
     }
 
     /**

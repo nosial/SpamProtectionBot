@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.operators;
 
+import net.nosial.spb.utilities.EntityPublisher;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.exceptions.ArgumentParseException;
 import net.nosial.spb.classes.ReportSubmissionService;
@@ -106,6 +107,8 @@ public final class BlacklistHandler extends Handler
 
         try
         {
+            publishTarget(context, message, parsed);
+
             String reportUuid = parsed.reportUuid();
             if (reportUuid == null)
             {
@@ -215,30 +218,104 @@ public final class BlacklistHandler extends Handler
         String reportUuid = null;
         Message targetMessage = replyTarget(message);
 
+        User targetAuthor = null;
         if (args.length == 4)
         {
             entityIdentifier = resolveIdentifier(context, args[0], lang);
+            if (entityIdentifier == null)
+            {
+                throw new ArgumentParseException(lm.get(lang, "blacklist", "usage"));
+            }
+            reportUuid = requireReportUuid(lm, lang, args[1]);
         }
         else
         {
             targetMessage = requireReplyTarget(context, message, targetMessage, lang);
             if (args.length == 3)
             {
-                reportUuid = args[0];
-                if (!MessageHelper.isUuid(reportUuid))
-                {
-                    throw new ArgumentParseException(lm.get(lang, "blacklist", "invalid_report", reportUuid));
-                }
+                reportUuid = requireReportUuid(lm, lang, args[0]);
             }
         }
 
         if (entityIdentifier == null)
         {
-            long authorId = targetMessage.getFrom().getId();
-            entityIdentifier = authorId + TELEGRAM_ENTITY_SUFFIX;
+            targetAuthor = targetMessage.getFrom();
+            entityIdentifier = targetAuthor.getId() + TELEGRAM_ENTITY_SUFFIX;
         }
 
-        return new BlacklistRequest(entityIdentifier, reportUuid, incidentType, expirationSeconds);
+        return new BlacklistRequest(entityIdentifier, targetAuthor, reportUuid, incidentType, expirationSeconds);
+    }
+
+    /**
+     * Validates a report UUID argument.
+     *
+     * @param lm the language manager
+     * @param lang the resolved language
+     * @param argument the argument expected to be a report UUID
+     * @return the report UUID
+     * @throws ArgumentParseException if the argument is not a UUID
+     */
+    private static String requireReportUuid(LanguageManager lm, Language lang, String argument) throws ArgumentParseException
+    {
+        if (!MessageHelper.isUuid(argument))
+        {
+            throw new ArgumentParseException(lm.get(lang, "blacklist", "invalid_report", argument));
+        }
+        return argument;
+    }
+
+    /**
+     * Publishes the blacklist target to Federation, since neither the supporting report nor the
+     * blacklist can be created for an entity the server has never seen.
+     *
+     * <p>A replied-to author is published with their properties unless the chat has privacy mode
+     * on. An explicitly named Telegram entity is published by identifier alone, since nothing more
+     * is known about it here; any other identifier (a UUID, hash, or foreign address) is left to
+     * the server as given.
+     *
+     * @param context the per-update context
+     * @param message the command message
+     * @param parsed the resolved arguments
+     */
+    private static void publishTarget(HandlerContext context, Message message, BlacklistRequest parsed)
+    {
+        Long telegramId = parsed.targetAuthor() != null ? parsed.targetAuthor().getId() : telegramId(parsed.entityIdentifier());
+        if (telegramId == null)
+        {
+            return;
+        }
+
+        try
+        {
+            EntityPublisher.publish(context, message.getChatId(), telegramId, parsed.targetAuthor());
+        }
+        catch (FederationException e)
+        {
+            // Not fatal on its own: the report or blacklist that follows reports the real failure.
+            LOGGER.warn("Failed to publish blacklist target {}: {}", parsed.entityIdentifier(), e.getMessage());
+        }
+    }
+
+    /**
+     * Returns the Telegram id of a {@code <id>@telegram.org} address.
+     *
+     * @param entityIdentifier an entity identifier
+     * @return the Telegram id, or {@code null} when the identifier is not a Telegram address
+     */
+    static Long telegramId(String entityIdentifier)
+    {
+        if (!entityIdentifier.endsWith(TELEGRAM_ENTITY_SUFFIX))
+        {
+            return null;
+        }
+        try
+        {
+            return Long.parseLong(entityIdentifier.substring(0, entityIdentifier.length() - TELEGRAM_ENTITY_SUFFIX.length()));
+        }
+        catch (NumberFormatException e)
+        {
+            return null;
+        }
     }
 
     /**
@@ -442,11 +519,12 @@ public final class BlacklistHandler extends Handler
      * The fully resolved set of arguments for a blacklist operation.
      *
      * @param entityIdentifier the entity to blacklist
+     * @param targetAuthor the replied-to author being blacklisted, or {@code null} for an explicit identifier
      * @param reportUuid the supporting report UUID, or {@code null} to create one
      * @param incidentType the incident type of the blacklist
      * @param expirationSeconds the expiration duration in seconds, added to the current time
      */
-    private record BlacklistRequest(String entityIdentifier, String reportUuid, IncidentType incidentType, long expirationSeconds)
+    private record BlacklistRequest(String entityIdentifier, User targetAuthor, String reportUuid, IncidentType incidentType, long expirationSeconds)
     {
     }
 }
