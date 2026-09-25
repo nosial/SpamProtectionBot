@@ -25,6 +25,10 @@ import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministr
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberOwner;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberUpdated;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.messageorigin.MessageOrigin;
+import org.telegram.telegrambots.meta.api.objects.messageorigin.MessageOriginChannel;
+import org.telegram.telegrambots.meta.api.objects.messageorigin.MessageOriginChat;
+import org.telegram.telegrambots.meta.api.objects.messageorigin.MessageOriginUser;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -271,8 +275,8 @@ public final class RegistrationHandler extends Handler
     }
 
     /**
-     * Pushes every user reachable from the message as a Federation entity when the message is in
-     * a group chat where the bot is enabled.
+     * Pushes every user, and every forwarded-from chat, reachable from the message as a Federation
+     * entity when {@link #shouldPushEntities(HandlerContext, Message)} allows it.
      *
      * <p>The entity address uses the Telegram convention {@code <id>@telegram.org}. Pushing is
      * best-effort: failures are logged and never prevent the update from being routed.
@@ -282,24 +286,7 @@ public final class RegistrationHandler extends Handler
      */
     private static void pushMessageUsers(HandlerContext context, Message message)
     {
-        String chatType = message.getChat().getType();
-        if (!chatType.equals("group") && !chatType.equals("supergroup"))
-        {
-            return;
-        }
-
-        ChatConfiguration configuration = context.managers().chatConfigurations().resolve(message.getChatId());
-        if (!configuration.enabled())
-        {
-            return;
-        }
-
-        if (configuration.privacyMode())
-        {
-            return;
-        }
-
-        if (!context.federation().isAvailable())
+        if (!shouldPushEntities(context, message))
         {
             return;
         }
@@ -308,6 +295,43 @@ public final class RegistrationHandler extends Handler
         {
             pushUser(context.federation(), user);
         }
+        for (Chat chat : collectForwardedChats(message))
+        {
+            pushChat(context.federation(), chat);
+        }
+    }
+
+    /**
+     * Decides whether the entities a message reveals may be pushed to the Federation server.
+     *
+     * <p>A private chat with the bot always pushes: whatever the user sends there (a forward to
+     * report, a {@code /info} lookup, an operator command) is addressed to the bot on purpose, and
+     * every such feature needs the entity to exist on the server first. A group pushes only when
+     * the bot is enabled there and its privacy mode is off.
+     *
+     * @param context the per-update context
+     * @param message the incoming message
+     * @return {@code true} when the message's entities should be pushed
+     */
+    static boolean shouldPushEntities(HandlerContext context, Message message)
+    {
+        if (!context.federation().isAvailable())
+        {
+            return false;
+        }
+
+        String chatType = message.getChat().getType();
+        if (chatType.equals("private"))
+        {
+            return true;
+        }
+        if (!chatType.equals("group") && !chatType.equals("supergroup"))
+        {
+            return false;
+        }
+
+        ChatConfiguration configuration = context.managers().chatConfigurations().resolve(message.getChatId());
+        return configuration.enabled() && !configuration.privacyMode();
     }
 
     /**
@@ -340,6 +364,30 @@ public final class RegistrationHandler extends Handler
     }
 
     /**
+     * Pushes a Telegram chat (a channel or group a message was forwarded from) to the Federation
+     * server as {@code <chat id>@telegram.org}, the same address a report against it uses.
+     *
+     * @param federation the Federation server
+     * @param chat the Telegram chat
+     */
+    static void pushChat(FederationService federation, Chat chat)
+    {
+        if (!federation.isAuthenticated())
+        {
+            return;
+        }
+
+        try
+        {
+            federation.publishEntity("telegram.org", String.valueOf(chat.getId()), FlatMetadata.of(chat));
+        }
+        catch (FederationException e)
+        {
+            LOGGER.warn("Failed to push Federation entity for chat {}: {}", chat.getId(), e.getMessage());
+        }
+    }
+
+    /**
      * Collects all distinct users reachable from the given message.
      *
      * @param message the incoming message
@@ -350,6 +398,7 @@ public final class RegistrationHandler extends Handler
         Map<Long, User> users = new LinkedHashMap<>();
         addUser(users, message.getFrom());
         addUser(users, message.getForwardFrom());
+        addUser(users, forwardOriginUser(message));
         addUser(users, message.getViaBot());
         addUser(users, message.getLeftChatMember());
         addUser(users, message.getSenderBusinessBot());
@@ -363,9 +412,60 @@ public final class RegistrationHandler extends Handler
         {
             addUser(users, replyTo.getFrom());
             addUser(users, replyTo.getForwardFrom());
+            addUser(users, forwardOriginUser(replyTo));
             addUser(users, replyTo.getViaBot());
         }
         return new ArrayList<>(users.values());
+    }
+
+    /**
+     * Returns the original author of a forwarded message when its origin is a visible user.
+     * Current Bot API versions report forwards only through {@code forward_origin}, leaving the
+     * legacy {@code forward_from} empty.
+     *
+     * @param message the message
+     * @return the original author, or {@code null}
+     */
+    private static User forwardOriginUser(Message message)
+    {
+        return message.getForwardOrigin() instanceof MessageOriginUser origin ? origin.getSenderUser() : null;
+    }
+
+    /**
+     * Collects the channels and groups the message, or the message it replies to, was forwarded
+     * from. Reports against such forwards are addressed to the chat itself.
+     *
+     * @param message the incoming message
+     * @return the distinct forwarded-from chats
+     */
+    private static List<Chat> collectForwardedChats(Message message)
+    {
+        Map<Long, Chat> chats = new LinkedHashMap<>();
+        addForwardedChat(chats, message);
+        Message replyTo = message.getReplyToMessage();
+        if (replyTo != null && !MessageHelper.isReplyToTopicHeader(message))
+        {
+            addForwardedChat(chats, replyTo);
+        }
+        return new ArrayList<>(chats.values());
+    }
+
+    /**
+     * Adds the chat a message was forwarded from to the map keyed by id, when there is one.
+     *
+     * @param chats the accumulated chat map
+     * @param message the message
+     */
+    private static void addForwardedChat(Map<Long, Chat> chats, Message message)
+    {
+        MessageOrigin origin = message.getForwardOrigin();
+        Chat chat = origin instanceof MessageOriginChannel channel ? channel.getChat()
+                : origin instanceof MessageOriginChat group ? group.getSenderChat()
+                : message.getForwardFromChat();
+        if (chat != null)
+        {
+            chats.putIfAbsent(chat.getId(), chat);
+        }
     }
 
     /**
