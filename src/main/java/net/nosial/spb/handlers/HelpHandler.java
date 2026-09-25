@@ -22,12 +22,13 @@ import java.util.List;
 /**
  * Handles the {@code /help} command and the subsequent help-menu callbacks.
  *
- * <p>The {@code /help} command sends the main help menu as a private message with inline category
+ * <p>The {@code /help} command sends the main help menu with inline category
  * buttons. Each button updates the message to show detailed information about a specific feature.
  * {@code help:<PAGE_NAME>} callbacks select a top-level page; {@code help:SETTINGS} and
  * {@code help:OPERATORS} open a sub-menu of their own topics, {@code help:SETTINGS:<SETTING>} and
  * {@code help:OPERATORS:<TOPIC>} select one of those topics, and {@code help:MAIN} returns to the
- * main menu from either sub-menu or topic. The help menu is only available in private chats.
+ * main menu from either sub-menu or topic. In a group the menu is sent as an ephemeral message
+ * visible only to the caller, and its buttons edit that ephemeral message in place.
  */
 @UpdateHandler(value = {UpdateType.COMMAND, UpdateType.CALLBACK_QUERY}, commands = "help", callbackData = HelpHandler.CALLBACK_PREFIX + ":")
 public final class HelpHandler extends Handler
@@ -45,7 +46,7 @@ public final class HelpHandler extends Handler
         }
 
         Message message = update.getMessage();
-        if (message == null || !"private".equals(message.getChat().getType()))
+        if (message == null || (!isPrivateChat(message) && !isGroupChat(message)))
         {
             return;
         }
@@ -54,6 +55,12 @@ public final class HelpHandler extends Handler
         String html = buildMainMenuHtml(context, lang);
         InlineKeyboardMarkup markup = buildMainMenuMarkup(context, lang);
 
+        if (isGroupChat(message))
+        {
+            // Shown only to whoever asked, so browsing the menu does not fill the group.
+            sendHtml(context, message, html, true, markup);
+            return;
+        }
         replyHtml(context, "help-main-menu", message, html, markup);
     }
 
