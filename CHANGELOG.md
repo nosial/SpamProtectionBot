@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.4]
+## [1.0.4] - 2026-09-25
 
-This is an ongoing update
+This update introduces bug fixes
+
+### Changed
+ - `/report` and `/blacklist` now explain, in regular groups, that Telegram does not show the bot replies to messages
+   sent before it joined, instead of only repeating their usage ([#8](https://github.com/nosial/SpamProtectionBot/issues/8))
+
+### Fixed
+ - Fixed never-updated evidence, reports and entities showing `1970-01-01 00:00:00 UTC` as their last update; they now
+   show `Never` ([#9](https://github.com/nosial/SpamProtectionBot/issues/9))
+ - Fixed `/help` not responding in group chats; the menu is now sent as an ephemeral message visible only to the caller
+   ([#10](https://github.com/nosial/SpamProtectionBot/issues/10))
 
 
 ## [1.0.3] - 2026-09-25
