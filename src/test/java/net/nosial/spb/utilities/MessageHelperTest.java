@@ -5,7 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -63,5 +65,28 @@ class MessageHelperTest
     void replyWithoutThreadIsARealReply()
     {
         assertFalse(MessageHelper.isReplyToTopicHeader(replyTo50("")));
+    }
+
+    @Test
+    @DisplayName("a reply in a forum's General topic is answered outside any topic")
+    void generalTopicReplyHasNoTopic()
+    {
+        // General is not a topic message, yet the reply still carries its chain's first message
+        // as the thread id; answering in that "thread" is refused, so the command seemed ignored.
+        assertNull(MessageHelper.topicId(replyTo50("\"message_thread_id\":50,")));
+    }
+
+    @Test
+    @DisplayName("a message inside a forum topic is answered in that topic")
+    void forumTopicMessageKeepsItsTopic()
+    {
+        assertEquals(12, MessageHelper.topicId(replyTo50("\"message_thread_id\":12,\"is_topic_message\":true,")));
+    }
+
+    @Test
+    @DisplayName("a message with no thread at all has no topic")
+    void unthreadedMessageHasNoTopic()
+    {
+        assertNull(MessageHelper.topicId(replyTo50("")));
     }
 }
