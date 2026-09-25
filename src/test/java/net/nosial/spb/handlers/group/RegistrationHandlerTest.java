@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.group;
 
+import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.Language;
 import net.nosial.spb.objects.context.HandlerContext;
@@ -240,6 +241,78 @@ class RegistrationHandlerTest
             var configuration = context.managers().chatConfigurations().getChatConfiguration(SUPERGROUP);
             assertNotNull(configuration.orElse(null));
             assertFalse(configuration.get().scanningEnabled(), "a later change on the new id survives");
+        }
+    }
+
+    @Nested
+    @DisplayName("Deciding whether entities are pushed to Federation")
+    class EntityPushPolicy
+    {
+        private static final long PRIVATE_CHAT = 42L;
+
+        /**
+         * Builds a message update in the given chat.
+         *
+         * @param chatId the chat
+         * @param chatType the chat's type
+         * @return the update JSON
+         */
+        private static String messageIn(long chatId, String chatType)
+        {
+            return """
+                    {"update_id":1,"message":{"message_id":7,"date":1700000000,
+                     "chat":{"id":%d,"type":"%s","title":"Test Chat"},
+                     "from":{"id":42,"is_bot":false,"first_name":"Owner"},
+                     "text":"hello"}}""".formatted(chatId, chatType);
+        }
+
+        /**
+         * Returns the policy's verdict for a message in the given chat.
+         *
+         * @param context the context to decide in
+         * @param chatId the chat
+         * @param chatType the chat's type
+         * @return whether the message's entities would be pushed
+         */
+        private static boolean decide(HandlerContext context, long chatId, String chatType)
+        {
+            HandlerContext update = context.withUpdate(Updates.fromJson(messageIn(chatId, chatType)));
+            return RegistrationHandler.shouldPushEntities(update, update.update().getMessage());
+        }
+
+        private HandlerContext configured()
+        {
+            return Contexts.template(RegistrationHandlerTest.this.directory, new FederationService("http://127.0.0.1:1/", null));
+        }
+
+        @Test
+        @DisplayName("a private chat with the bot always pushes")
+        void privateChatAlwaysPushes()
+        {
+            assertTrue(decide(configured(), PRIVATE_CHAT, "private"));
+        }
+
+        @Test
+        @DisplayName("nothing is pushed when Federation is not configured")
+        void unavailableFederationNeverPushes()
+        {
+            HandlerContext context = Contexts.template(RegistrationHandlerTest.this.directory);
+            assertFalse(decide(context, PRIVATE_CHAT, "private"));
+        }
+
+        @Test
+        @DisplayName("a group pushes only when enabled with privacy mode off")
+        void groupRequiresEnabledWithoutPrivacy() throws Exception
+        {
+            HandlerContext context = configured();
+            assertFalse(decide(context, SUPERGROUP, "supergroup"), "a group the bot is not enabled in never pushes");
+
+            context.managers().chatConfigurations().enableChatConfiguration(SUPERGROUP);
+            context.managers().chatConfigurations().setPrivacyMode(SUPERGROUP, true);
+            assertFalse(decide(context, SUPERGROUP, "supergroup"), "privacy mode suppresses pushing");
+
+            context.managers().chatConfigurations().setPrivacyMode(SUPERGROUP, false);
+            assertTrue(decide(context, SUPERGROUP, "supergroup"));
         }
     }
 }
