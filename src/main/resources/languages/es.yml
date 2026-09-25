@@ -62,6 +62,10 @@ start:
   server_host_label: "<b>Host del servidor:</b> {0}\n"
   server_api_version_label: "<b>Versión de la API del servidor:</b> {0}\n"
 
+bot_added:
+  permissions_required: "<b>¡Gracias por añadirme!</b>\n\nPara proteger este chat, promuéveme a administrador con los siguientes permisos:\n\u2022 Cambiar la información del grupo\n\u2022 Eliminar mensajes (Opcional)\n\u2022 Bloquear usuarios (Opcional)\n\nUna vez hecho, un administrador puede enviar /settings para configurarme."
+  ready: "<b>Listo para proteger este chat</b>\n\nUn administrador con el permiso Cambiar la información del grupo puede enviar /settings para configurarme."
+
 settings:
   bot_admin_required: "El bot debe ser un administrador con el permiso <b>Cambiar la información del grupo</b> para mostrar el menú de ajustes."
   secretary_not_enabled: "<b>El modo secretaría está deshabilitado.</b>\n\nPara configurar la protección de grupo, añada el bot a un grupo y envíe <code>/start</code> allí. Para usar el modo secretaría, abra Telegram \u2192 Ajustes \u2192 Telegram Business y añada este bot como administrador, otorgándole permiso para eliminar mensajes."

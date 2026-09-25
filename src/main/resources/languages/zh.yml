@@ -62,6 +62,10 @@ start:
   server_host_label: "<b>服务器主机：</b> {0}\n"
   server_api_version_label: "<b>服务器 API 版本：</b> {0}\n"
 
+bot_added:
+  permissions_required: "<b>感谢添加我！</b>\n\n为了保护此聊天，请将我提升为管理员并授予以下权限：\n\u2022 更改群组信息\n\u2022 删除消息（可选）\n\u2022 封禁用户（可选）\n\n完成后，管理员可以发送 /settings 来配置我。"
+  ready: "<b>已准备好保护此聊天</b>\n\n拥有“更改群组信息”权限的管理员可以发送 /settings 来配置我。"
+
 settings:
   bot_admin_required: "机器人必须是具有 <b>更改群组信息</b> 权限的管理员才能显示设置菜单。"
   secretary_not_enabled: "<b>秘书模式已禁用。</b>\n\n要配置群组保护，请将机器人添加到群组并在那里发送 <code>/start</code>。要使用秘书模式，请打开 Telegram \u2192 设置 \u2192 企业，并将此机器人添加为管理者，授予其删除消息的权限。"

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.classes.Handler;
+import net.nosial.spb.handlers.group.BotMembershipHandler;
 import net.nosial.spb.handlers.group.ConfigurationHandler;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.Language;
@@ -167,6 +168,13 @@ public final class StartHandler extends Handler
      */
     private static void handleStartGroupJoin(HandlerContext context, Message message, Language lang) throws TelegramApiException
     {
+        // Joining through the link also reports the bot's new membership, which has already
+        // told the group what to do next.
+        if (BotMembershipHandler.claimJoin(context, message.getChatId()))
+        {
+            return;
+        }
+
         if (!isBotChangeInformationAdministrator(context, message.getChatId()))
         {
             sendEphemeralHtml(context, message,
