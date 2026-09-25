@@ -246,7 +246,7 @@ public final class EvidenceHandler extends Handler
         }
 
         html.append(lm.get(lang, "evidence", "created", MessageHelper.formatTimestamp(evidence.created()))).append('\n');
-        html.append(lm.get(lang, "evidence", "updated", MessageHelper.formatTimestamp(evidence.updated()))).append('\n');
+        html.append(lm.get(lang, "evidence", "updated", MessageHelper.formatUpdated(lm, lang, evidence.updated()))).append('\n');
 
         appendMetadata(html, evidence.metadata(), lm, lang);
 

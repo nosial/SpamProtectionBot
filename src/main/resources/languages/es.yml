@@ -10,6 +10,7 @@ general:
   enabled: "Habilitado"
   disabled: "Deshabilitado"
   unknown: "Desconocido"
+  never: "Nunca"
   dismiss: "Descartar"
   cancel: "Cancelar"
   back: "Atrás"

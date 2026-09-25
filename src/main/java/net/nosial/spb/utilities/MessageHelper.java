@@ -1,5 +1,7 @@
 package net.nosial.spb.utilities;
 
+import net.nosial.spb.objects.Language;
+import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.exceptions.FederationException;
 import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.objects.context.HandlerContext;
@@ -100,6 +102,23 @@ public final class MessageHelper
     public static String formatTimestamp(long epochSeconds)
     {
         return TIMESTAMP_FORMAT.format(Instant.ofEpochSecond(epochSeconds));
+    }
+
+    /**
+     * Formats the last-updated timestamp of a Federation record, which is absent until the record
+     * is first changed.
+     *
+     * <p>The server leaves {@code updated} empty on a record that was never changed and the client
+     * reads that as {@code 0}, which would otherwise be shown as the Unix epoch in 1970.
+     *
+     * @param lm the language manager
+     * @param lang the resolved language
+     * @param epochSeconds the Unix epoch seconds, or {@code 0} when the record was never updated
+     * @return the formatted timestamp, or the localized word for "never"
+     */
+    public static String formatUpdated(LanguageManager lm, Language lang, long epochSeconds)
+    {
+        return epochSeconds > 0 ? formatTimestamp(epochSeconds) : lm.get(lang, "general", "never");
     }
 
     /**

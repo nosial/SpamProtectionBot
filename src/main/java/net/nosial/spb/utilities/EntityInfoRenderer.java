@@ -86,7 +86,7 @@ public final class EntityInfoRenderer
         }
 
         html.append(lm.get(lang, "info", "created", HtmlEscape.escape(MessageHelper.formatTimestamp(entity.created())))).append('\n');
-        html.append(lm.get(lang, "info", "updated", HtmlEscape.escape(MessageHelper.formatTimestamp(entity.updated())))).append('\n');
+        html.append(lm.get(lang, "info", "updated", HtmlEscape.escape(MessageHelper.formatUpdated(lm, lang, entity.updated())))).append('\n');
         appendEntityQuery(html, fetchEntityQuery(context, address), lm, lang);
         appendBlacklists(context, html, entity.uuid(), lm, lang);
         appendReports(context, html, entity.uuid(), lm, lang);

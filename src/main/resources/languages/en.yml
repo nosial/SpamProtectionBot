@@ -10,6 +10,7 @@ general:
   enabled: "Enabled"
   disabled: "Disabled"
   unknown: "Unknown"
+  never: "Never"
   dismiss: "Dismiss"
   cancel: "Cancel"
   back: "Back"

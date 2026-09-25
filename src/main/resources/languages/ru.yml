@@ -10,6 +10,7 @@ general:
   enabled: "Включено"
   disabled: "Выключено"
   unknown: "Неизвестно"
+  never: "Никогда"
   dismiss: "Закрыть"
   cancel: "Отмена"
   back: "Назад"

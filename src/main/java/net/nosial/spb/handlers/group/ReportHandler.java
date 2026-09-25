@@ -986,7 +986,7 @@ public final class ReportHandler extends Handler
                         ? "<code>" + HtmlEscape.escape(report.assignedOperator()) + "</code>"
                         : lm.get(lang, "report", "unassigned"))).append('\n');
         html.append(lm.get(lang, "report", "created", MessageHelper.formatTimestamp(report.created()))).append('\n');
-        html.append(lm.get(lang, "report", "updated", MessageHelper.formatTimestamp(report.updated()))).append('\n');
+        html.append(lm.get(lang, "report", "updated", MessageHelper.formatUpdated(lm, lang, report.updated()))).append('\n');
 
         html.append('\n');
         html.append(lm.get(lang, "report", "evidence_header"));

@@ -378,7 +378,7 @@ public final class InfoHandler extends Handler
         }
 
         html.append(lm.get(lang, "info", "created", HtmlEscape.escape(MessageHelper.formatTimestamp(entity.created())))).append('\n');
-        html.append(lm.get(lang, "info", "updated", HtmlEscape.escape(MessageHelper.formatTimestamp(entity.updated())))).append('\n');
+        html.append(lm.get(lang, "info", "updated", HtmlEscape.escape(MessageHelper.formatUpdated(lm, lang, entity.updated())))).append('\n');
 
         EntityInfoRenderer.appendEntityQuery(html, entityQuery, lm, lang);
         EntityInfoRenderer.appendBlacklists(context, html, entity.uuid(), lm, lang);
