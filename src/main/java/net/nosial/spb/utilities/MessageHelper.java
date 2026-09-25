@@ -32,6 +32,27 @@ public final class MessageHelper
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
 
     /**
+     * Returns the forum topic a message was posted in, for sending a response to the same topic.
+     *
+     * <p>Telegram sets {@code message_thread_id} on more than topic messages: any reply, including
+     * one in a forum's General topic, carries the id of the first message of its reply chain. That
+     * id names no topic, so a response sent with it is refused by Telegram.
+     * Only a message flagged as a topic message carries a real topic id; everything else, General
+     * included, is answered without one.
+     *
+     * @param message the message being answered, or {@code null}
+     * @return the topic id, or {@code null} when the message is not in a forum topic
+     */
+    public static Integer topicId(Message message)
+    {
+        if (message == null || !message.isTopicMessage())
+        {
+            return null;
+        }
+        return message.getMessageThreadId();
+    }
+
+    /**
      * Returns whether a message is merely attached to its own forum-topic header rather than
      * replying to a specific message.
      *

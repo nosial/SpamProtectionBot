@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.group;
 
+import net.nosial.spb.utilities.MessageHelper;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.classes.Handler;
@@ -100,7 +101,7 @@ public final class ChannelConnectHandler extends Handler
         try
         {
             context.managers().chatConfigurations().linkChannel(chatId, channelId,
-                    message.getMessageThreadId() != null ? (long) message.getMessageThreadId() : null);
+                    MessageHelper.topicId(message) != null ? (long) MessageHelper.topicId(message) : null);
         }
         catch (DatabaseException e)
         {

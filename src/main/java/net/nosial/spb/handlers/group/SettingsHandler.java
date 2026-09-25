@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.group;
 
+import net.nosial.spb.utilities.MessageHelper;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.classes.Handler;
@@ -79,7 +80,7 @@ public final class SettingsHandler extends Handler
             context.telegramClient().execute(SendMessage.builder()
                     .chatId(String.valueOf(message.getChatId()))
                     .replyToMessageId(message.getMessageId())
-                    .messageThreadId(message.getMessageThreadId())
+                    .messageThreadId(MessageHelper.topicId(message))
                     .receiverUserId(message.getFrom().getId())
                     .text(context.languages().get(lang, "settings", "bot_admin_required"))
                     .parseMode(ParseMode.HTML)

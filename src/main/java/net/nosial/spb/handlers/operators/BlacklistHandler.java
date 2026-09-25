@@ -175,7 +175,7 @@ public final class BlacklistHandler extends Handler
         ReportContext report = new ReportContext(null, operatorId, message.getChatId(),
                 targetMessage.getMessageId(), targetAuthor.getId(),
                 MessageContent.textOrCaption(targetMessage), attachments, FlatMetadata.of(targetMessage), null, true,
-                targetMessage.getMessageThreadId(), null, parsed.incidentType(), true,
+                MessageHelper.topicId(targetMessage), null, parsed.incidentType(), true,
                 System.currentTimeMillis(), System.currentTimeMillis());
 
         return ReportSubmissionService.submitOperatorReference(context, accessToken, report);

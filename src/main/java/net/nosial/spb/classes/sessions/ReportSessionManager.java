@@ -1,5 +1,6 @@
 package net.nosial.spb.classes.sessions;
 
+import net.nosial.spb.utilities.MessageHelper;
 import java.util.List;
 import java.util.Map;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
@@ -57,7 +58,7 @@ public final class ReportSessionManager extends AbstractSessionManager<ReportCon
     {
         return create(command.getFrom().getId(), command.getChatId(), target.getMessageId(),
                 target.getFrom() != null ? target.getFrom().getId() : 0L, MessageContent.textOrCaption(target),
-                attachments, FlatMetadata.of(target), target.getMessageThreadId(), reporterIsAdmin, ephemeral);
+                attachments, FlatMetadata.of(target), MessageHelper.topicId(target), reporterIsAdmin, ephemeral);
     }
 
     /**

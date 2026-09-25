@@ -298,7 +298,7 @@ public final class EvidenceHandler extends Handler
                 .chatId(String.valueOf(message.getChatId()))
                 .receiverUserId(message.getFrom() != null ? message.getFrom().getId() : null)
                 .replyToMessageId(message.getMessageId())
-                .messageThreadId(message.getMessageThreadId())
+                .messageThreadId(MessageHelper.topicId(message))
                 .text(html)
                 .parseMode(ParseMode.HTML)
                 .build());

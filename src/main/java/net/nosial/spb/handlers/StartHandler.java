@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers;
 
+import net.nosial.spb.utilities.MessageHelper;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import java.util.ArrayList;
@@ -260,7 +261,7 @@ public final class StartHandler extends Handler
         }
 
         var builder = SendMessage.builder().chatId(String.valueOf(message.getChatId()))
-                .messageThreadId(message.getMessageThreadId())
+                .messageThreadId(MessageHelper.topicId(message))
                 .text(html.toString())
                 .parseMode(ParseMode.HTML);
         if (configurable)

@@ -516,7 +516,7 @@ public final class ReportHandler extends Handler
      */
     private void startDialog(HandlerContext context, Message message, Message targetMessage, boolean ephemeral) throws TelegramApiException
     {
-        Integer messageThreadId = targetMessage.getMessageThreadId();
+        Integer messageThreadId = MessageHelper.topicId(targetMessage);
         boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessage,
                 ReportAttachments.forReport(context, targetMessage), reporterIsAdmin, ephemeral);
@@ -557,7 +557,7 @@ public final class ReportHandler extends Handler
     private void submitDirectReport(HandlerContext context, Message message, Message targetMessage,
                                     IncidentType incidentType, String comment) throws TelegramApiException
     {
-        Integer messageThreadId = targetMessage.getMessageThreadId();
+        Integer messageThreadId = MessageHelper.topicId(targetMessage);
         boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = new ReportContext(null, message.getFrom().getId(), message.getChatId(),
                 targetMessage.getMessageId(), targetMessage.getFrom().getId(), MessageContent.textOrCaption(targetMessage),

@@ -418,7 +418,7 @@ public abstract class Handler
         boolean hasFrom = message.getFrom() != null;
         var builder = SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
-                .messageThreadId(message.getMessageThreadId())
+                .messageThreadId(MessageHelper.topicId(message))
                 .text(html)
                 .parseMode(ParseMode.HTML);
         if (useEphemeral && hasFrom)
@@ -462,7 +462,7 @@ public abstract class Handler
 
         context.telegramClient().execute(SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
-                .messageThreadId(message.getMessageThreadId())
+                .messageThreadId(MessageHelper.topicId(message))
                 .receiverUserId(message.getFrom().getId())
                 .text(text)
                 .build());
@@ -610,7 +610,7 @@ public abstract class Handler
     {
         var builder = SendMessage.builder().chatId(String.valueOf(message.getChatId()))
                 .replyToMessageId(message.getMessageId())
-                .messageThreadId(message.getMessageThreadId())
+                .messageThreadId(MessageHelper.topicId(message))
                 .text(html)
                 .parseMode(ParseMode.HTML);
         if (markup != null)

@@ -151,7 +151,7 @@ public final class ConfigurationHandler extends Handler
 
         String chatId = session.ephemeral() ? String.valueOf(session.chatId()) : String.valueOf(session.userId());
         Message source = context.update().getMessage();
-        Integer topicId = source != null && source.getChatId() == session.chatId() ? source.getMessageThreadId() : null;
+        Integer topicId = source != null && source.getChatId() == session.chatId() ? MessageHelper.topicId(source) : null;
         Message sent = execute(context, "open-main-menu", SendMessage.builder()
                 .chatId(chatId)
                 .receiverUserId(session.ephemeral() ? session.userId() : null)
