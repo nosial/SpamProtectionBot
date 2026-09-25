@@ -221,6 +221,31 @@ public abstract class Handler
     }
 
     /**
+     * Appends an explanation to a reply-based command's answer when it was sent in a regular
+     * group without a reply.
+     *
+     * <p>Unlike a supergroup, a regular group keeps no shared history: when the command replies
+     * to a message sent before the bot joined, Telegram delivers it with no trace of the reply at
+     * all. Such a command cannot be told apart from one that was never a reply, so the answer
+     * says why the reply may have been missed instead of only repeating the usage.
+     *
+     * @param context the per-update context
+     * @param lang the resolved language
+     * @param message the command message
+     * @param section the command's localization section, which holds its {@code regular_group_note}
+     * @param html the answer to send
+     * @return the answer, with the explanation added in a regular group
+     */
+    protected static String withRegularGroupReplyNote(HandlerContext context, Language lang, Message message, String section, String html)
+    {
+        if (!"group".equals(message.getChat().getType()))
+        {
+            return html;
+        }
+        return html + context.languages().get(lang, section, "regular_group_note");
+    }
+
+    /**
      * Returns whether the message's author is an administrator of the message's chat with the
      * Change Group Information permission, according to the cached administrator list.
      *

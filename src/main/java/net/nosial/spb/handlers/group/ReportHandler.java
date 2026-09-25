@@ -360,7 +360,8 @@ public final class ReportHandler extends Handler
 
         if (!message.isReply() || message.getReplyToMessage() == null)
         {
-            sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "usage"), true, null);
+            Language lang = resolveLanguage(context, message);
+            sendHtml(context, message, withRegularGroupReplyNote(context, lang, message, "report", context.languages().get(lang, "report", "usage")), true, null);
             return;
         }
 

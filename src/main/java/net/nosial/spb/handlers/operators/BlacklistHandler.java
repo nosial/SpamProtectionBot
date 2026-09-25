@@ -339,7 +339,11 @@ public final class BlacklistHandler extends Handler
         {
             throw new ArgumentParseException(lm.get(lang, "blacklist", "usage"));
         }
-        if (targetMessage == null || targetMessage.getFrom() == null)
+        if (targetMessage == null)
+        {
+            throw new ArgumentParseException(withRegularGroupReplyNote(context, lang, message, "blacklist", lm.get(lang, "blacklist", "cannot_be_reported")));
+        }
+        if (targetMessage.getFrom() == null)
         {
             throw new ArgumentParseException(lm.get(lang, "blacklist", "cannot_be_reported"));
         }
