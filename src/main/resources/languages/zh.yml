@@ -379,8 +379,8 @@ authentication:
   status_disabled: "<b>状态：</b> 禁用"
   permissions_header: "<b>权限</b>\n"
   permission_client: "客户端：{0}"
-  permission_operator: "操作员：{0}"
-  permission_management: "管理：{0}"
+  permission_operator: "操作员管理：{0}"
+  permission_management: "服务器管理：{0}"
   permission_auto_assign: "自动分配：{0}"
 
 ping:

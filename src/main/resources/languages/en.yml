@@ -379,8 +379,8 @@ authentication:
   status_disabled: "<b>Status:</b> Disabled"
   permissions_header: "<b>Permissions</b>\n"
   permission_client: "Client: {0}"
-  permission_operator: "Operator: {0}"
-  permission_management: "Management: {0}"
+  permission_operator: "Operator Administration: {0}"
+  permission_management: "Server Management: {0}"
   permission_auto_assign: "Auto-assign: {0}"
 
 ping:
