@@ -253,13 +253,6 @@ public final class StartHandler extends Handler
                             HtmlEscape.escape(serverInformation.apiVersion())));
         }
 
-        if (serverInformation != null)
-        {
-            html.append(context.languages().get(lang, "start", "server_footer",
-                    HtmlEscape.escape(serverInformation.serverName()),
-                    HtmlEscape.escape(serverInformation.apiVersion())));
-        }
-
         var builder = SendMessage.builder().chatId(String.valueOf(message.getChatId()))
                 .messageThreadId(MessageHelper.topicId(message))
                 .text(html.toString())

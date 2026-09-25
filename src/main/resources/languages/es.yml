@@ -57,11 +57,10 @@ start:
   getting_started_group_permissions: "Para comenzar, asegúrese de que este bot tenga los siguientes permisos:\n\u2022 Cambiar la información del grupo\n\u2022 Eliminar mensajes (Opcional)\n\u2022 Banear usuarios (Opcional)\nUna vez configurado, envíe el comando /start de nuevo\n"
   additional_help_header: "\n<b>Ayuda</b>\n"
   additional_help_body: "Envíe /help para abrir el menú de ayuda del bot, que explica qué comandos están disponibles y cómo funcionan.\n"
-  server_information_header: "\n<b>Información del servidor</b>\n"
+  server_information_header: "\n<b>Información de la Federación</b>\n"
   server_name_label: "<b>Nombre del servidor:</b> {0}\n"
   server_host_label: "<b>Host del servidor:</b> {0}\n"
   server_api_version_label: "<b>Versión de la API del servidor:</b> {0}\n"
-  server_footer: "\n<i>{0} Servidor {1}</i>"
 
 settings:
   bot_admin_required: "El bot debe ser un administrador con el permiso <b>Cambiar la información del grupo</b> para mostrar el menú de ajustes."
@@ -387,7 +386,7 @@ ping:
   bot_status: "<b>Estado:</b> <code>{0}</code>\n"
   bot_latency: "<b>Latencia de actualización:</b> {0} ms\n\n"
   status_online: "En línea"
-  federation_header: "<b>Federación</b>\n"
+  federation_header: "<b>Servidor de la Federación</b>\n"
   federation_status: "<b>Estado:</b> <code>{0}</code>\n"
   status_not_configured: "No configurada"
   status_unreachable: "Inalcanzable"
@@ -397,7 +396,6 @@ ping:
   access_anonymous: "Anónimo"
   federation_latency: "<b>Latencia:</b> {0} ms\n"
   federation_server: "<b>Servidor:</b> {0} (API {1})\n"
-  federation_stats_header: "\n<b>Servidor de la Federación</b>\n"
   federation_stat_entities: "<b>Entidades conocidas:</b> <code>{0}</code>\n"
   federation_stat_blacklist: "<b>Registros de lista negra:</b> <code>{0}</code>\n"
   federation_stat_reports: "<b>Reportes:</b> <code>{0}</code>\n"
@@ -412,8 +410,8 @@ ping:
   operator_permissions: "<b>Permisos:</b> {0}"
   operator_unavailable: "No se pudo verificar su credencial de la Federación almacenada en este momento. Use <code>/auth</code> para actualizarla."
   permission_client: "Cliente"
-  permission_management: "Gestión"
-  permission_operator: "Operador"
+  permission_management: "Gestión del servidor"
+  permission_operator: "Administración de operadores"
   permission_none: "Ninguno"
 
 channel_connect:

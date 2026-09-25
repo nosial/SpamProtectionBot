@@ -47,9 +47,6 @@ public final class StartScreen
                     .append(context.languages().get(lang, "start", "server_name_label", HtmlEscape.escape(serverInformation.serverName())))
                     .append(context.languages().get(lang, "start", "server_host_label", HtmlEscape.escape(MessageHelper.serverHost(context))))
                     .append(context.languages().get(lang, "start", "server_api_version_label", HtmlEscape.escape(serverInformation.apiVersion())));
-            html.append(context.languages().get(lang, "start", "server_footer",
-                    HtmlEscape.escape(serverInformation.serverName()),
-                    HtmlEscape.escape(serverInformation.apiVersion())));
         }
         return html.toString();
     }

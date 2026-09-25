@@ -119,7 +119,6 @@ public final class PingHandler extends Handler
         html.append(lm.get(lang, "ping", "federation_access", lm.get(lang, "ping", federation.isAuthenticated() ? "access_authenticated" : "access_anonymous")));
         html.append(lm.get(lang, "ping", "federation_latency", String.valueOf(federationLatencyMs)));
         html.append(lm.get(lang, "ping", "federation_server", HtmlEscape.escape(serverInformation.serverName()), HtmlEscape.escape(serverInformation.apiVersion())));
-        html.append(lm.get(lang, "ping", "federation_stats_header"));
         html.append(lm.get(lang, "ping", "federation_stat_entities", String.valueOf(serverInformation.knownEntities())));
         html.append(lm.get(lang, "ping", "federation_stat_blacklist", String.valueOf(serverInformation.blacklistRecords())));
         html.append(lm.get(lang, "ping", "federation_stat_reports", String.valueOf(serverInformation.reports())));

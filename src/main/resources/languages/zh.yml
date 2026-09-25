@@ -57,11 +57,10 @@ start:
   getting_started_group_permissions: "要开始使用，请确保此机器人具有以下权限：\n\u2022 更改群组信息\n\u2022 删除消息（可选）\n\u2022 封禁用户（可选）\n配置完成后，请重新发送 /start 命令\n"
   additional_help_header: "\n<b>帮助</b>\n"
   additional_help_body: "发送 /help 打开机器人的帮助菜单，其中解释了可用命令及其工作方式。\n"
-  server_information_header: "\n<b>服务器信息</b>\n"
+  server_information_header: "\n<b>联邦信息</b>\n"
   server_name_label: "<b>服务器名称：</b> {0}\n"
   server_host_label: "<b>服务器主机：</b> {0}\n"
   server_api_version_label: "<b>服务器 API 版本：</b> {0}\n"
-  server_footer: "\n<i>{0} 服务器 {1}</i>"
 
 settings:
   bot_admin_required: "机器人必须是具有 <b>更改群组信息</b> 权限的管理员才能显示设置菜单。"
@@ -387,7 +386,7 @@ ping:
   bot_status: "<b>状态：</b> <code>{0}</code>\n"
   bot_latency: "<b>更新延迟：</b> {0} ms\n\n"
   status_online: "在线"
-  federation_header: "<b>联邦</b>\n"
+  federation_header: "<b>联邦服务器</b>\n"
   federation_status: "<b>状态：</b> <code>{0}</code>\n"
   status_not_configured: "未配置"
   status_unreachable: "无法连接"
@@ -397,7 +396,6 @@ ping:
   access_anonymous: "匿名"
   federation_latency: "<b>延迟：</b> {0} ms\n"
   federation_server: "<b>服务器：</b> {0} (API {1})\n"
-  federation_stats_header: "\n<b>联邦服务器</b>\n"
   federation_stat_entities: "<b>已知实体：</b> <code>{0}</code>\n"
   federation_stat_blacklist: "<b>黑名单记录：</b> <code>{0}</code>\n"
   federation_stat_reports: "<b>举报记录：</b> <code>{0}</code>\n"
@@ -412,8 +410,8 @@ ping:
   operator_permissions: "<b>权限：</b> {0}"
   operator_unavailable: "目前无法验证您存储的联邦凭据。请使用 <code>/auth</code> 更新。"
   permission_client: "客户端"
-  permission_management: "管理"
-  permission_operator: "操作员"
+  permission_management: "服务器管理"
+  permission_operator: "操作员管理"
   permission_none: "无"
 
 channel_connect:

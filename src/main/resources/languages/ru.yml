@@ -57,11 +57,10 @@ start:
   getting_started_group_permissions: "Чтобы начать, убедитесь, что боту предоставлены следующие разрешения:\n\u2022 Изменение профиля группы\n\u2022 Удаление сообщений (опционально)\n\u2022 Блокировка пользователей (опционально)\nПосле настройки отправьте команду /start снова\n"
   additional_help_header: "\n<b>Справка</b>\n"
   additional_help_body: "Отправьте /help, чтобы открыть меню справки бота с описанием доступных команд и принципов их работы.\n"
-  server_information_header: "\n<b>Информация о сервере</b>\n"
+  server_information_header: "\n<b>Информация о Федерации</b>\n"
   server_name_label: "<b>Имя сервера:</b> {0}\n"
   server_host_label: "<b>Хост сервера:</b> {0}\n"
   server_api_version_label: "<b>Версия API сервера:</b> {0}\n"
-  server_footer: "\n<i>Сервер {0} {1}</i>"
 
 settings:
   bot_admin_required: "Бот должен быть администратором с разрешением <b>Изменение профиля группы</b>, чтобы отобразить меню настроек."
@@ -387,7 +386,7 @@ ping:
   bot_status: "<b>Статус:</b> <code>{0}</code>\n"
   bot_latency: "<b>Задержка обновлений:</b> {0} мс\n\n"
   status_online: "В сети"
-  federation_header: "<b>Федерация</b>\n"
+  federation_header: "<b>Сервер Федерации</b>\n"
   federation_status: "<b>Статус:</b> <code>{0}</code>\n"
   status_not_configured: "Не настроена"
   status_unreachable: "Недоступа"
@@ -397,7 +396,6 @@ ping:
   access_anonymous: "Анонимный"
   federation_latency: "<b>Задержка:</b> {0} мс\n"
   federation_server: "<b>Сервер:</b> {0} (API {1})\n"
-  federation_stats_header: "\n<b>Сервер Федерации</b>\n"
   federation_stat_entities: "<b>Известные объекты:</b> <code>{0}</code>\n"
   federation_stat_blacklist: "<b>Записи в ЧС:</b> <code>{0}</code>\n"
   federation_stat_reports: "<b>Жалобы:</b> <code>{0}</code>\n"
@@ -412,8 +410,8 @@ ping:
   operator_permissions: "<b>Права:</b> {0}"
   operator_unavailable: "Сохраненные учетные данные не удалось проверить. Используйте <code>/auth</code> для обновления."
   permission_client: "Клиент"
-  permission_management: "Управление"
-  permission_operator: "Оператор"
+  permission_management: "Управление сервером"
+  permission_operator: "Администрирование операторов"
   permission_none: "Нет"
 
 channel_connect:

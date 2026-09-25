@@ -57,11 +57,10 @@ start:
   getting_started_group_permissions: "To get started, ensure that this bot has the following permissions:\n\u2022 Change Group Information\n\u2022 Delete Messages (Optional)\n\u2022 Ban Users (Optional)\nOnce configured, send the /start command again\n"
   additional_help_header: "\n<b>Help</b>\n"
   additional_help_body: "Send /help to open the bot's help menu, which explains what commands are available and how they work.\n"
-  server_information_header: "\n<b>Server Information</b>\n"
+  server_information_header: "\n<b>Federation Information</b>\n"
   server_name_label: "<b>Server Name:</b> {0}\n"
   server_host_label: "<b>Server Host:</b> {0}\n"
   server_api_version_label: "<b>Server API Version:</b> {0}\n"
-  server_footer: "\n<i>{0} Server {1}</i>"
 
 settings:
   bot_admin_required: "The bot must be an administrator with the <b>Change Group Information</b> permission to show the settings menu."
@@ -387,7 +386,7 @@ ping:
   bot_status: "<b>Status:</b> <code>{0}</code>\n"
   bot_latency: "<b>Update latency:</b> {0} ms\n\n"
   status_online: "Online"
-  federation_header: "<b>Federation</b>\n"
+  federation_header: "<b>Federation Server</b>\n"
   federation_status: "<b>Status:</b> <code>{0}</code>\n"
   status_not_configured: "Not configured"
   status_unreachable: "Unreachable"
@@ -397,7 +396,6 @@ ping:
   access_anonymous: "Anonymous"
   federation_latency: "<b>Latency:</b> {0} ms\n"
   federation_server: "<b>Server:</b> {0} (API {1})\n"
-  federation_stats_header: "\n<b>Federation Server</b>\n"
   federation_stat_entities: "<b>Known Entities:</b> <code>{0}</code>\n"
   federation_stat_blacklist: "<b>Blacklist Records:</b> <code>{0}</code>\n"
   federation_stat_reports: "<b>Reports:</b> <code>{0}</code>\n"
@@ -412,8 +410,8 @@ ping:
   operator_permissions: "<b>Permissions:</b> {0}"
   operator_unavailable: "Your stored Federation credential could not be verified right now. Use <code>/auth</code> to update it."
   permission_client: "Client"
-  permission_management: "Management"
-  permission_operator: "Operator"
+  permission_management: "Server Management"
+  permission_operator: "Operator Administration"
   permission_none: "None"
 
 channel_connect:
