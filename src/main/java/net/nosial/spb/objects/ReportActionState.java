@@ -1,6 +1,7 @@
 package net.nosial.spb.objects;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -12,32 +13,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link #claim()} is what makes that race safe, and the target list is what lets the buttons be
  * removed from every copy once one is used.
  *
- * <p>This lives in the shared runtime cache keyed by report UUID, so it is written by whatever
- * submits a report and read by whatever handles the button press. Instances are thread-safe.
+ * <p>Held by {@link net.nosial.spb.classes.sessions.ReportActionTracker}, keyed by the reported
+ * message, so it is written by whatever submits a report and read by whatever handles the button
+ * press. Instances are thread-safe.
  */
 public final class ReportActionState
 {
-    private final List<NotificationTarget> targets;
+    private final List<NotificationTarget> targets = new CopyOnWriteArrayList<>();
     private final AtomicBoolean consumed = new AtomicBoolean(false);
 
     /**
-     * Creates the state for a freshly delivered notification.
+     * Records further delivered copies of the notification. Copies can still be added after the
+     * action was claimed, since a moderator may press a button before every copy is delivered.
      *
-     * @param targets every chat the notification was delivered to
+     * @param delivered the delivered copies carrying buttons
      */
-    public ReportActionState(List<NotificationTarget> targets)
+    public void addTargets(List<NotificationTarget> delivered)
     {
-        this.targets = List.copyOf(targets);
+        this.targets.addAll(delivered);
     }
 
     /**
-     * Returns every chat the notification was delivered to.
+     * Returns every delivered copy of the notification recorded so far.
      *
      * @return the notification targets
      */
     public List<NotificationTarget> targets()
     {
-        return this.targets;
+        return List.copyOf(this.targets);
     }
 
     /**
