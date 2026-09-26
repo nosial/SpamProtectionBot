@@ -103,7 +103,7 @@ public final class SecretarySettingsHandler extends Handler
         if (session == null || callbackQuery.getFrom() == null || session.userId() != callbackQuery.getFrom().getId())
         {
             answer(context, callbackQuery);
-            editToExpired(context, callbackQuery);
+            editToExpired(context, callbackQuery, "secretary_settings", "session_expired");
             return;
         }
 
