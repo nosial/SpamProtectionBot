@@ -2,6 +2,7 @@ package net.nosial.spb.objects;
 
 import net.nosial.spb.classes.sessions.ConfigurationSessionManager;
 import net.nosial.spb.classes.sessions.FalsePositiveReportSessionManager;
+import net.nosial.spb.classes.sessions.ReportActionTracker;
 import net.nosial.spb.classes.sessions.ReportSessionManager;
 
 import java.util.Objects;
@@ -16,14 +17,16 @@ import java.util.Objects;
  * @param configuration configuration sessions opened by {@code /start} or {@code /settings} in a group
  * @param report report dialogs opened by {@code /report}
  * @param falsePositive one-shot actions attached to a moderation notification
+ * @param reportActions which moderators' report notifications carry buttons, and whether one was used
  */
 public record SessionRegistry(
         ConfigurationSessionManager configuration,
         ReportSessionManager report,
-        FalsePositiveReportSessionManager falsePositive)
+        FalsePositiveReportSessionManager falsePositive,
+        ReportActionTracker reportActions)
 {
     /**
-     * Rejects a partially-populated registry, since a missing manager would only fail later on a
+     * Rejects a partially populated registry, since a missing manager would only fail later on a
      * worker thread.
      */
     public SessionRegistry
@@ -31,6 +34,7 @@ public record SessionRegistry(
         Objects.requireNonNull(configuration, "configuration session manager must not be null");
         Objects.requireNonNull(report, "report session manager must not be null");
         Objects.requireNonNull(falsePositive, "false-positive session manager must not be null");
+        Objects.requireNonNull(reportActions, "report action tracker must not be null");
     }
 
     /**
@@ -38,6 +42,7 @@ public record SessionRegistry(
      */
     public SessionRegistry()
     {
-        this(new ConfigurationSessionManager(), new ReportSessionManager(), new FalsePositiveReportSessionManager());
+        this(new ConfigurationSessionManager(), new ReportSessionManager(),
+                new FalsePositiveReportSessionManager(), new ReportActionTracker());
     }
 }
