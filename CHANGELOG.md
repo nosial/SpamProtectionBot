@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is an ongoing update
 
+### Changed
+ - Operator report notification buttons no longer expire after 8 hours or on a bot restart; they carry the report UUID
+   themselves and stay usable until the report is closed, acting with the operator's current credential
+   ([#12](https://github.com/nosial/SpamProtectionBot/issues/12))
+ - Moderator Delete / Mute / Ban buttons on report notifications no longer expire after 10 minutes or on a bot
+   restart; they carry the reported message themselves, and the moderator's administrator rights are checked again
+   when a button is pressed
+ - Closing a report from an operator notification now removes the buttons and replies with the result instead of
+   replacing the notification, and a failed close leaves the notification and its buttons in place for another attempt
+ - Only moderators of the protected chat can use the Report False Positive button, which could previously be pressed
+   by any member of a linked chat that received the notification
+ - Callback alerts and toasts now convert HTML to plain text, so markup can no longer appear as raw tags
+
+### Fixed
+ - Fixed the "Report Action Expired" alert showing raw `<b>` tags ([#13](https://github.com/nosial/SpamProtectionBot/issues/13))
+ - Fixed expired operator report actions replacing the whole notification, which hid the report UUID; buttons sent
+   before this update now act on the report UUID shown in the notification
+   ([#11](https://github.com/nosial/SpamProtectionBot/issues/11))
+ - Fixed expired moderator report buttons claiming the report "has already been processed"
+ - Fixed an expired Report False Positive button staying on the notification
+ - Fixed another member pressing a group settings menu replacing it with an "expired" message for its owner
+ - Fixed expired settings menus always being shown in the default language, and Secretary settings pointing to
+   `/start` in a group instead of `/settings`
 
 
 ## [1.0.4] - 2026-09-25
