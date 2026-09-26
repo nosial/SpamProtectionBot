@@ -176,9 +176,7 @@ public final class Main implements AutoCloseable
         // makes sense once there is a Federation to poll.
         if (this.federation.isAvailable())
         {
-            this.notifications = new NotificationService(services.managers(), this.bot.client(),
-                    this.federation, Duration.ofSeconds(this.configuration.getNotificationIntervalSeconds()),
-                    services.sessions().operatorReport());
+            this.notifications = new NotificationService(services.managers(), this.bot.client(), this.federation, Duration.ofSeconds(this.configuration.getNotificationIntervalSeconds()));
             this.notifications.start();
         }
 

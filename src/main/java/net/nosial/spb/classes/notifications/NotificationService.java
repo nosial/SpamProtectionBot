@@ -6,10 +6,8 @@ import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.classes.managers.ManagerRegistry;
 import net.nosial.spb.exceptions.FederationException;
 import net.nosial.jfederation.records.ReportRecord;
-import net.nosial.spb.classes.sessions.OperatorReportSessionManager;
 import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.objects.database.OperatorIdentity;
-import net.nosial.spb.objects.context.OperatorReportContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -50,7 +48,6 @@ public final class NotificationService implements AutoCloseable
     private final long intervalMillis;
     private final ReportSource reportSource;
     private final NotificationSink notificationSink;
-    private final OperatorReportSessionManager operatorReportSessions;
     private final Map<Long, OperatorState> operatorStates = new HashMap<>();
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -63,14 +60,11 @@ public final class NotificationService implements AutoCloseable
      * @param telegramClient client used to deliver private Telegram messages
      * @param federation the Federation server the reports are polled from
      * @param interval time between completed poll cycles
-     * @param operatorReportSessions memory-bound action sessions for notification buttons
      */
-    public NotificationService(ManagerRegistry managers, OkHttpTelegramClient telegramClient,
-                               FederationService federation, Duration interval,
-                               OperatorReportSessionManager operatorReportSessions)
+    public NotificationService(ManagerRegistry managers, OkHttpTelegramClient telegramClient, FederationService federation, Duration interval)
     {
         this(managers, interval, identity -> loadOpenedReports(federation, identity),
-                new ReportNotificationSender(telegramClient, federation, managers), operatorReportSessions);
+                new ReportNotificationSender(telegramClient, federation, managers));
         Objects.requireNonNull(telegramClient, "telegramClient must not be null");
         Objects.requireNonNull(federation, "federation must not be null");
     }
@@ -84,16 +78,12 @@ public final class NotificationService implements AutoCloseable
      * @param interval how long to wait between completed passes
      * @param reportSource reads the open reports assigned to an operator
      * @param notificationSink delivers one report to one operator
-     * @param operatorReportSessions the one-shot actions attached to each notification
      */
-    private NotificationService(ManagerRegistry managers, Duration interval, ReportSource reportSource,
-                                NotificationSink notificationSink,
-                                OperatorReportSessionManager operatorReportSessions)
+    private NotificationService(ManagerRegistry managers, Duration interval, ReportSource reportSource, NotificationSink notificationSink)
     {
         this.managers = Objects.requireNonNull(managers, "managers must not be null");
         this.reportSource = Objects.requireNonNull(reportSource, "reportSource must not be null");
         this.notificationSink = Objects.requireNonNull(notificationSink, "notificationSink must not be null");
-        this.operatorReportSessions = Objects.requireNonNull(operatorReportSessions, "operatorReportSessions must not be null");
         Objects.requireNonNull(interval, "interval must not be null");
         if (interval.isZero() || interval.isNegative())
         {
@@ -187,10 +177,9 @@ public final class NotificationService implements AutoCloseable
                 continue;
             }
 
-            OperatorReportContext session = this.operatorReportSessions.create(telegramUserId, identity, report.uuid());
             try
             {
-                this.notificationSink.send(telegramUserId, report, session);
+                this.notificationSink.send(telegramUserId, report);
             }
             catch (Exception e)
             {
