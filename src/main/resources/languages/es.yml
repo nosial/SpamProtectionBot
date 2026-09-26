@@ -344,10 +344,8 @@ operator_report:
   federation_rejected_close: "El servidor de la Federación rechazó la solicitud de cierre."
   closed_header: "<b>Reporte cerrado</b>\n\n<b>ID del reporte:</b> <code>{0}</code>"
   closed_classification: "\n<b>Clasificación:</b> {0}"
-  expired: "<b>Acción de reporte expirada</b>\n\nEsta acción ya no está disponible."
   expired_alert: "Acción de reporte expirada\n\nEsta acción ya no está disponible."
   not_operator: "Ya no está autenticado como operador. Use /auth para iniciar sesión de nuevo."
-  failed_header: "<b>Error en la acción del reporte</b>\n\n{0}"
 
 blacklist:
   regular_group_note: "\n\n<i>¿Respondiste a un mensaje? En los grupos normales, Telegram no me muestra las respuestas a mensajes enviados antes de que me uniera. Responde a un mensaje más reciente o convierte el grupo en un supergrupo.</i>"
