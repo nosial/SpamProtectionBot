@@ -8,7 +8,6 @@ import net.nosial.spb.exceptions.FederationException;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.spb.classes.Handler;
-import net.nosial.spb.classes.sessions.FalsePositiveReportSessionManager;
 import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.classes.sessions.ReportSessionManager;
 import net.nosial.spb.enums.ReportPage;
@@ -72,15 +71,7 @@ import java.util.List;
 public final class ReportHandler extends Handler
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReportHandler.class);
-
-    // Package-private: the class-level @UpdateHandler annotation reads it.
     static final String CALLBACK_PREFIX = "report";
-
-    // Package-private: the class-level @UpdateHandler annotation reads it.
-    static final String ACTION_CALLBACK_PREFIX = "report_action";
-    private static final String EVIDENCE_TAG_USER = "user_report";
-    private static final String EVIDENCE_TAG_ADMIN = "admin_report";
-    private static final String TELEGRAM_ENTITY_SUFFIX = "@telegram.org";
 
     /**
      * Returns the report dialogs currently open.
@@ -91,17 +82,6 @@ public final class ReportHandler extends Handler
     private static ReportSessionManager reportSessions(HandlerContext context)
     {
         return context.sessions().report();
-    }
-
-    /**
-     * Returns the one-shot false-positive actions currently outstanding.
-     *
-     * @param context the per-update context
-     * @return the false-positive session manager
-     */
-    private static FalsePositiveReportSessionManager falsePositiveSessions(HandlerContext context)
-    {
-        return context.sessions().falsePositive();
     }
 
     @Override
@@ -382,7 +362,7 @@ public final class ReportHandler extends Handler
             sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "self_report"), true, null);
             return;
         }
-        if (isChatAdministrator(context, message.getChatId(), targetAuthor.getId().longValue()))
+        if (isChatAdministrator(context, message.getChatId(), targetAuthor.getId()))
         {
             sendHtml(context, message, context.languages().get(resolveLanguage(context, message), "report", "admin_report"), true, null);
             return;
@@ -897,62 +877,6 @@ public final class ReportHandler extends Handler
         editMessage(context, message, callbackQuery, text, markup);
     }
 
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
     /**
      * Builds the HTML summary of a Federation report record and its associated evidence UUIDs.
      *
@@ -998,7 +922,7 @@ public final class ReportHandler extends Handler
         {
             for (EvidenceRecord record : evidence)
             {
-                html.append("\u2022 <code>").append(HtmlEscape.escape(record.uuid())).append("</code>\n");
+                html.append("• <code>").append(HtmlEscape.escape(record.uuid())).append("</code>\n");
             }
         }
 
