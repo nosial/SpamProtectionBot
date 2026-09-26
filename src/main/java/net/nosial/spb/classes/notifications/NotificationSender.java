@@ -127,16 +127,12 @@ public final class NotificationSender
      * @param context current update context
      * @param protectedChatId chat where the reported message lives
      * @param reportHtml the report notification HTML (without the content block)
-     * @param reportUuid the report UUID
      * @param targetMessageId the original message id in the protected chat
      * @param targetAuthorId the original author id of the reported message
      * @param linkedChatNotification whether the linked chat/channel should also receive the notification
      * @return the list of notification targets for tracking button removal
      */
-    public static List<NotificationTarget> notifyReportSubmitted(HandlerContext context, long protectedChatId,
-                                                                  String reportHtml, String reportUuid,
-                                                                  long targetMessageId, long targetAuthorId,
-                                                                  boolean linkedChatNotification)
+    public static List<NotificationTarget> notifyReportSubmitted(HandlerContext context, long protectedChatId, String reportHtml, long targetMessageId, long targetAuthorId, boolean linkedChatNotification)
     {
         ChatConfiguration configuration = resolveConfiguration(context, protectedChatId);
         List<AdminInfo> admins = context.chatAdmins().getIfPresent(protectedChatId);
@@ -157,16 +153,14 @@ public final class NotificationSender
             {
                 AdminInfo adminInfo = findAdmin(admins, moderator);
                 InlineKeyboardMarkup markup = adminInfo != null
-                        ? buildActionButtons(adminInfo, botInfo, reportUuid) : null;
-                deliverReport(context, protectedChatId, moderator, reportHtml, markup,
-                        targetMessageId, targetAuthorId, targets);
+                        ? buildActionButtons(adminInfo, botInfo, protectedChatId, (int) targetMessageId, targetAuthorId) : null;
+                deliverReport(context, protectedChatId, moderator, reportHtml, markup, targetMessageId, targets);
             }
         }
 
         if (linkedChatNotification && configuration.channelLinkId() != null)
         {
-            deliverReport(context, protectedChatId, configuration.channelLinkId(), reportHtml, null,
-                    targetMessageId, targetAuthorId, targets);
+            deliverReport(context, protectedChatId, configuration.channelLinkId(), reportHtml, null, targetMessageId, targets);
         }
         return targets;
     }
@@ -184,15 +178,15 @@ public final class NotificationSender
             try
             {
                 context.telegramClient().execute(EditMessageReplyMarkup.builder()
-                        .chatId(String.valueOf(target.notificationChatId()))
-                        .messageId(target.notificationMessageId())
+                        .chatId(String.valueOf(target.chatId()))
+                        .messageId(target.messageId())
                         .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
                         .build());
             }
             catch (TelegramApiException e)
             {
                 LOGGER.debug("Could not remove action buttons from notification {} in chat {}: {}",
-                        target.notificationMessageId(), target.notificationChatId(), e.getMessage());
+                        target.messageId(), target.chatId(), e.getMessage());
             }
         }
     }
@@ -208,8 +202,7 @@ public final class NotificationSender
      * @param replyToMessageId optional message to reply to
      * @return the sent message, or {@code null} on failure
      */
-    public static Message send(HandlerContext context, long destination, String html, InlineKeyboardMarkup markup,
-                               Integer messageThreadId, Integer replyToMessageId)
+    public static Message send(HandlerContext context, long destination, String html, InlineKeyboardMarkup markup, Integer messageThreadId, Integer replyToMessageId)
     {
         try
         {
@@ -267,20 +260,19 @@ public final class NotificationSender
 
     /**
      * Forwards the reported message to one destination and replies to it with the report details,
-     * recording the delivered notification in {@code targets}.
+     * recording the delivered notification in {@code targets} when it carries buttons.
      */
     private static void deliverReport(HandlerContext context, long protectedChatId, long destination,
                                       String reportHtml, InlineKeyboardMarkup markup, long targetMessageId,
-                                      long targetAuthorId, List<NotificationTarget> targets)
+                                      List<NotificationTarget> targets)
     {
         Message forwarded = forward(context, protectedChatId, destination, (int) targetMessageId);
         Integer replyToId = forwarded != null ? forwarded.getMessageId() : null;
 
         Message sent = send(context, destination, reportHtml, markup, null, replyToId);
-        if (sent != null)
+        if (sent != null && markup != null)
         {
-            targets.add(new NotificationTarget(protectedChatId, destination, sent.getMessageId(),
-                    targetMessageId, targetAuthorId));
+            targets.add(new NotificationTarget(destination, sent.getMessageId()));
         }
     }
 
@@ -291,40 +283,39 @@ public final class NotificationSender
      *
      * @param adminInfo the receiving administrator's cached permissions
      * @param botInfo the bot's own cached permissions, or {@code null} when unknown
-     * @param reportUuid the report UUID for callback data
+     * @param chatId the protected chat the reported message lives in
+     * @param messageId the reported message
+     * @param authorId the author of the reported message
      * @return the inline keyboard, or {@code null} when no combined permissions apply
      */
-    private static InlineKeyboardMarkup buildActionButtons(AdminInfo adminInfo, AdminInfo botInfo, String reportUuid)
+    private static InlineKeyboardMarkup buildActionButtons(AdminInfo adminInfo, AdminInfo botInfo, long chatId, int messageId, long authorId)
     {
         List<InlineKeyboardButton> buttons = new ArrayList<>();
-
-        boolean botCanDelete = botInfo != null && botInfo.canDeleteMessages();
-        boolean botCanRestrict = botInfo != null && botInfo.canRestrictMembers();
-
-        if (adminInfo.canDeleteMessages() && botCanDelete)
-        {
-            buttons.add(InlineKeyboardButton.builder()
-                    .text("Delete Message")
-                    .callbackData("report_action:" + reportUuid + ":delete")
-                    .build());
-        }
-        if (adminInfo.canRestrictMembers() && botCanRestrict)
-        {
-            buttons.add(InlineKeyboardButton.builder()
-                    .text("Delete + Mute 1h")
-                    .callbackData("report_action:" + reportUuid + ":mute")
-                    .build());
-            buttons.add(InlineKeyboardButton.builder()
-                    .text("Delete + Ban")
-                    .callbackData("report_action:" + reportUuid + ":ban")
-                    .build());
-        }
+        addActionButton(buttons, "Delete Message", ReportActionCallback.Action.DELETE, adminInfo, botInfo, chatId, messageId, authorId);
+        addActionButton(buttons, "Delete + Mute 1h", ReportActionCallback.Action.MUTE, adminInfo, botInfo, chatId, messageId, authorId);
+        addActionButton(buttons, "Delete + Ban", ReportActionCallback.Action.BAN, adminInfo, botInfo, chatId, messageId, authorId);
 
         if (buttons.isEmpty())
         {
             return null;
         }
         return InlineKeyboardMarkup.builder().keyboardRow(new InlineKeyboardRow(buttons)).build();
+    }
+
+    /**
+     * Adds one moderation button when both the receiving administrator and the bot may perform
+     * its action.
+     */
+    private static void addActionButton(List<InlineKeyboardButton> buttons, String text, ReportActionCallback.Action action,
+                                        AdminInfo adminInfo, AdminInfo botInfo, long chatId, int messageId, long authorId)
+    {
+        if (action.permits(adminInfo) && action.permits(botInfo))
+        {
+            buttons.add(InlineKeyboardButton.builder()
+                    .text(text)
+                    .callbackData(new ReportActionCallback(chatId, messageId, authorId, action).data())
+                    .build());
+        }
     }
 
     /**
