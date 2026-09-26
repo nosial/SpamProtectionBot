@@ -12,13 +12,10 @@ import net.nosial.spb.objects.database.OperatorIdentity;
 import net.nosial.spb.utilities.MessageHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -185,11 +182,7 @@ public final class OperatorReportHandler extends Handler
      */
     private static void replyClosed(HandlerContext context, Message message, Language lang, String reportUuid, ClassificationFlag classification) throws TelegramApiException
     {
-        tryExecute(context, "operator-report-remove-buttons", EditMessageReplyMarkup.builder()
-                .chatId(String.valueOf(message.getChatId()))
-                .messageId(message.getMessageId())
-                .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
-                .build());
+        removeInlineKeyboard(context, message);
 
         StringBuilder html = new StringBuilder(context.languages().get(lang, "operator_report", "closed_header", reportUuid));
         if (classification != null)
