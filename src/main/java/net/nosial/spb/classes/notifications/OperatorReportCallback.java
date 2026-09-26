@@ -15,7 +15,8 @@ public final class OperatorReportCallback
 
     /**
      * Namespace of the buttons sent before they became stateless, which referenced an in-memory
-     * session that no longer exists. They are still claimed, so pressing one gets an answer.
+     * session that no longer exists. They are still claimed, and act on the report UUID shown in
+     * the notification text.
      */
     public static final String LEGACY_PREFIX = "operator-report";
 
