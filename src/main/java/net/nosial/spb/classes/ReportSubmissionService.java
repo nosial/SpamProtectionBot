@@ -12,7 +12,6 @@ import net.nosial.spb.objects.ChatInfo;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.NotificationTarget;
 import net.nosial.spb.objects.ReportAttachment;
-import net.nosial.spb.objects.ReportActionState;
 import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.context.ReportContext;
 import net.nosial.spb.utilities.EntityPublisher;
@@ -195,8 +194,11 @@ public final class ReportSubmissionService
                 String reportUuid = submission.getReport().uuid();
                 String html = notificationHtml(context.languages(), lang, context, session, reportUuid, reportMessage);
                 List<NotificationTarget> targets = NotificationSender.notifyReportSubmitted(context, session.chatId(),
-                                html, reportUuid, session.targetMessageId(), session.targetAuthorId(), true);
-                context.cache().put("report_notifications:" + reportUuid, new ReportActionState(targets));
+                                html, session.targetMessageId(), session.targetAuthorId(), true);
+                if (!context.sessions().reportActions().track(session.chatId(), session.targetMessageId(), targets))
+                {
+                    NotificationSender.removeActionButtons(context, targets);
+                }
             }
             if (origin.isSummarised())
             {
