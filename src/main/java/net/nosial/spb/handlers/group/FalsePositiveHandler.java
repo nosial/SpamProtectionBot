@@ -74,7 +74,31 @@ public final class FalsePositiveHandler extends Handler
     {
         Language lang = resolveLanguage(context, callback);
         String[] parts = data.split(":", 2);
-        FalsePositiveReportContext falsePositive = parts.length == 2 ? falsePositiveSessions(context).take(parts[1]) : null;
+        String hash = parts.length == 2 ? parts[1] : null;
+        FalsePositiveReportContext pending = hash != null ? falsePositiveSessions(context).find(hash) : null;
+        if (pending == null)
+        {
+            // The session held the deleted message's content, so the action cannot be recovered.
+            // Only the button goes; the notification stays readable.
+            answerAlert(context, callback, context.languages().get(lang, "false_positive", "expired"));
+            if (callback.getMessage() instanceof Message notification)
+            {
+                removeInlineKeyboard(context, notification);
+            }
+            return;
+        }
+
+        // The notification can also reach a linked channel or group whose members are not
+        // moderators of the protected chat, so the presser is checked before the one-time action
+        // is used up.
+        refreshAdministrators(context, pending.chatId());
+        if (!isChatAdministrator(context, pending.chatId(), callback.getFrom().getId()))
+        {
+            answerAlert(context, callback, context.languages().get(lang, "false_positive", "not_permitted"));
+            return;
+        }
+
+        FalsePositiveReportContext falsePositive = falsePositiveSessions(context).take(hash);
         if (falsePositive == null)
         {
             answerAlert(context, callback, context.languages().get(lang, "false_positive", "expired"));
