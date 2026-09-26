@@ -9,6 +9,7 @@ import net.nosial.spb.objects.context.ConfigurationContext;
 import net.nosial.spb.objects.Language;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.context.HandlerContext;
+import net.nosial.spb.utilities.HtmlEscape;
 import net.nosial.spb.utilities.MessageHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditEphemeralMessageText;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -322,7 +324,8 @@ public abstract class Handler
 
     /**
      * Returns whether the cached administrator list of a chat holds the given user with the given
-     * permission.
+     * permission. Call {@link #refreshAdministrators} first when the user is acting on the result
+     * directly and a promotion or demotion must be honoured at once.
      *
      * @param context the per-update command context
      * @param chatId the Telegram chat id
@@ -330,7 +333,7 @@ public abstract class Handler
      * @param permission the permission the administrator must hold
      * @return {@code true} when the user is a cached administrator holding the permission
      */
-    private static boolean hasAdministrator(HandlerContext context, long chatId, long userId, Predicate<AdminInfo> permission)
+    protected static boolean hasAdministrator(HandlerContext context, long chatId, long userId, Predicate<AdminInfo> permission)
     {
         List<AdminInfo> administrators = context.chatAdmins().getIfPresent(chatId);
         return administrators != null && administrators.stream().anyMatch(a -> a.id() == userId && permission.test(a));
@@ -688,6 +691,9 @@ public abstract class Handler
      * Answers the callback query with a toast message shown at the top of the chat, to give visual
      * feedback in addition to any message edit.
      *
+     * <p>Telegram shows toasts as plain text, so any HTML in {@code text} is converted to the
+     * text it would display rather than being shown as raw tags.
+     *
      * @param context the per-update command context
      * @param callbackQuery the incoming callback query
      * @param text the toast text
@@ -697,7 +703,7 @@ public abstract class Handler
     {
         context.telegramClient().execute(AnswerCallbackQuery.builder()
                 .callbackQueryId(callbackQuery.getId())
-                .text(text)
+                .text(HtmlEscape.toPlainText(text))
                 .showAlert(false)
                 .build());
     }
@@ -705,6 +711,9 @@ public abstract class Handler
     /**
      * Answers the callback query with an alert dialog shown in the middle of the screen, used for
      * errors or state changes that require the user's attention.
+     *
+     * <p>Telegram shows alerts as plain text, so any HTML in {@code text} is converted to the
+     * text it would display rather than being shown as raw tags.
      *
      * @param context the per-update command context
      * @param callbackQuery the incoming callback query
@@ -715,7 +724,7 @@ public abstract class Handler
     {
         context.telegramClient().execute(AnswerCallbackQuery.builder()
                 .callbackQueryId(callbackQuery.getId())
-                .text(text)
+                .text(HtmlEscape.toPlainText(text))
                 .showAlert(true)
                 .build());
     }
@@ -867,9 +876,26 @@ public abstract class Handler
             return;
         }
 
-        String expiredText = context.languages().get(context.languages().defaultLanguage(),
-                section, key);
+        String expiredText = context.languages().get(resolveLanguage(context, callbackQuery), section, key);
         editMessage(context, message, callbackQuery, expiredText, null);
+    }
+
+    /**
+     * Removes the inline keyboard from a message on a best-effort basis, leaving its text intact.
+     *
+     * <p>Used when a notification's buttons can no longer be acted on, so the information the
+     * notification carries stays available to the reader.
+     *
+     * @param context the per-update command context
+     * @param message the message whose buttons to remove
+     */
+    protected static void removeInlineKeyboard(HandlerContext context, Message message)
+    {
+        tryExecute(context, "remove-inline-keyboard", EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .messageId(message.getMessageId())
+                .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
+                .build());
     }
 
     /**
