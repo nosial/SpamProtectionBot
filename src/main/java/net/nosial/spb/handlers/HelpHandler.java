@@ -212,8 +212,7 @@ public final class HelpHandler extends Handler
         {
             return body;
         }
-        return "<b>" + context.languages().get(lang, "help_pages", "settings_title")
-                + "</b>\n\n" + body;
+        return "<b>" + context.languages().get(lang, "help_pages", "settings_title") + "</b>\n\n" + body;
     }
 
     /**
