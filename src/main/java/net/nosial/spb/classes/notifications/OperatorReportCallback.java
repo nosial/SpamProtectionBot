@@ -22,10 +22,6 @@ public final class OperatorReportCallback
     /** Action that closes the report without a classification. */
     public static final String CLOSE = "close";
 
-    private OperatorReportCallback()
-    {
-    }
-
     /**
      * Builds the callback data for one notification button.
      *
