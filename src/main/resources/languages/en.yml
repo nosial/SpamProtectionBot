@@ -127,11 +127,13 @@ secretary_settings:
   toast_behavior_changed: "Secretary behavior changed to {0}."
   toast_contact_allowed: "Contact allowed."
   toast_contact_denied: "Contact denied."
+  session_expired: "This settings menu has expired. Send /settings to open it again."
   not_enabled: "\u26A0\uFE0F <b>Secretary mode is not enabled.</b>\n\nOpen Telegram \u2192 Settings \u2192 Business, connect this bot to your account, and grant it permission to delete messages. This restriction is removed and your settings are shown as soon as the connection exists."
 configuration:
   owner_only_alert: "Only the group owner can enable or disable the bot."
   change_info_only_alert: "Only group administrators who can change group information can change these settings."
   session_expired: "This configuration session has expired or is no longer valid. Send /start in the group again to configure the bot."
+  session_not_owner: "This menu was opened by someone else. Send /start in the group to open your own."
   toast_enabled: "Protection enabled."
   toast_disabled: "Protection disabled."
   toast_language_changed: "Language changed."
@@ -311,6 +313,8 @@ report:
   evidence_header: "<b>Evidence:</b>\n"
   evidence_none: "None\n"
   already_processed: "This report has already been processed."
+  action_expired: "These moderation buttons have expired. Act on the reported message in the chat directly."
+  action_not_permitted: "You no longer have the administrator rights needed for this action."
   action_completed: "Action completed."
   action_partial_failure: "Action partially failed."
   report_cancelled: "<b>Report cancelled.</b>\n\nPress Dismiss to remove this message."
@@ -454,6 +458,7 @@ join_protection:
 
 false_positive:
   expired: "This Report False Positive action has expired or was already used."
+  not_permitted: "Only moderators of the chat can report a false positive."
   submitted: "False-positive report submitted."
   submit_failed: "The false-positive report could not be submitted."
   submitted_block: "<b>False-Positive Report Submitted</b>\n<b>Report ID:</b> <code>{0}</code>"

@@ -126,12 +126,14 @@ secretary_settings:
   toast_behavior_changed: "Comportamiento de secretaría cambiado a {0}."
   toast_contact_allowed: "Contacto permitido."
   toast_contact_denied: "Contacto denegado."
+  session_expired: "Este menú de ajustes ha expirado. Envíe /settings para abrirlo de nuevo."
   not_enabled: "\u26A0\uFE0F <b>El modo secretaría no está habilitado.</b>\n\nAbra Telegram \u2192 Ajustes \u2192 Telegram Business, conecte este bot a su cuenta y otórguele permiso para eliminar mensajes. Esta restricción se elimina y sus ajustes se muestran tan pronto como exista la conexión."
 
 configuration:
   owner_only_alert: "Solo el propietario del grupo puede habilitar o deshabilitar el bot."
   change_info_only_alert: "Solo los administradores del grupo que pueden cambiar la información del grupo pueden cambiar esta configuración."
   session_expired: "Esta sesión de configuración ha expirado o ya no es válida. Envíe /start en el grupo de nuevo para configurar el bot."
+  session_not_owner: "Este menú fue abierto por otra persona. Envíe /start en el grupo para abrir el suyo."
   toast_enabled: "Protección habilitada."
   toast_disabled: "Protección deshabilitada."
   toast_language_changed: "Idioma cambiado."
@@ -311,6 +313,8 @@ report:
   evidence_header: "<b>Evidencia:</b>\n"
   evidence_none: "Ninguna\n"
   already_processed: "Este reporte ya ha sido procesado."
+  action_expired: "Estos botones de moderación han expirado. Actúe sobre el mensaje reportado directamente en el chat."
+  action_not_permitted: "Ya no tiene los permisos de administrador necesarios para esta acción."
   action_completed: "Acción completada."
   action_partial_failure: "La acción falló parcialmente."
   report_cancelled: "<b>Reporte cancelado.</b>\n\nPresione Descartar para eliminar este mensaje."
@@ -454,6 +458,7 @@ join_protection:
 
 false_positive:
   expired: "Esta acción de Reportar falso positivo ha expirado o ya fue utilizada."
+  not_permitted: "Solo los moderadores del chat pueden reportar un falso positivo."
   submitted: "Reporte de falso positivo enviado."
   submit_failed: "No se pudo enviar el reporte de falso positivo."
   submitted_block: "<b>Reporte de falso positivo enviado</b>\n<b>ID del reporte:</b> <code>{0}</code>"

@@ -126,12 +126,14 @@ secretary_settings:
   toast_behavior_changed: "秘书行为模式已更改为 {0}。"
   toast_contact_allowed: "已允许联系人。"
   toast_contact_denied: "已拒绝联系人。"
+  session_expired: "此设置菜单已过期。请发送 /settings 重新打开。"
   not_enabled: "\u26A0\uFE0F <b>秘书模式未启用。</b>\n\n打开 Telegram \u2192 设置 \u2192 企业，将此机器人连接到您的账号，并授予其删除消息的权限。一旦连接成功，此限制将被解除并显示您的设置。"
 
 configuration:
   owner_only_alert: "只有群组所有者可以启用或禁用机器人。"
   change_info_only_alert: "只有可以更改群组信息的群组管理员才能更改这些设置。"
   session_expired: "此配置会话已过期或不再有效。请在群组中重新发送 /start 以配置机器人。"
+  session_not_owner: "此菜单由其他人打开。请在群组中发送 /start 打开您自己的菜单。"
   toast_enabled: "保护已启用。"
   toast_disabled: "保护已禁用。"
   toast_language_changed: "语言已更改。"
@@ -311,6 +313,8 @@ report:
   evidence_header: "<b>证据：</b>\n"
   evidence_none: "无\n"
   already_processed: "该举报已被处理。"
+  action_expired: "这些管理按钮已过期。请直接在群组中处理被举报的消息。"
+  action_not_permitted: "您已不再拥有执行此操作所需的管理员权限。"
   action_completed: "操作已完成。"
   action_partial_failure: "操作部分失败。"
   report_cancelled: "<b>举报已取消。</b>\n\n按下“忽略”以移除此消息。"
@@ -454,6 +458,7 @@ join_protection:
 
 false_positive:
   expired: "此误报举报操作已过期或已被使用。"
+  not_permitted: "只有该群组的管理员才能举报误报。"
   submitted: "误报举报已提交。"
   submit_failed: "误报举报提交失败。"
   submitted_block: "<b>误报举报已提交</b>\n<b>举报 ID：</b> <code>{0}</code>"
