@@ -7,9 +7,7 @@ import net.nosial.spb.exceptions.FederationException;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.spb.classes.LanguageManager;
-import net.nosial.spb.classes.sessions.OperatorReportSessionManager;
 import net.nosial.spb.objects.Language;
-import net.nosial.spb.objects.context.OperatorReportContext;
 import net.nosial.spb.utilities.EntityResolver;
 import net.nosial.spb.utilities.HtmlEscape;
 import org.slf4j.Logger;
@@ -29,7 +27,7 @@ import java.util.Objects;
  * Delivers a single-message report notification to an operator when a report is assigned to them.
  *
  * <p>The message begins with {@code #REPORT_ASSIGNED} and contains the report metadata, the
- * report message (if any), a list of evidence UUIDs, and the one-time operator action keyboard.
+ * report message (if any), a list of evidence UUIDs, and the operator action keyboard.
  */
 final class ReportNotificationSender implements NotificationSink
 {
@@ -56,7 +54,7 @@ final class ReportNotificationSender implements NotificationSink
     }
 
     @Override
-    public void send(long telegramUserId, ReportRecord report, OperatorReportContext session) throws Exception
+    public void send(long telegramUserId, ReportRecord report) throws Exception
     {
         Language lang = this.managers.languagePreferences().getUserLanguage(telegramUserId);
         List<String> evidenceIds = loadEvidenceIds(this.federation, report.uuid());
@@ -65,32 +63,31 @@ final class ReportNotificationSender implements NotificationSink
                 .chatId(String.valueOf(telegramUserId))
                 .text(detailsHtml(report, evidenceIds, lang))
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(actionMarkup(NotificationFormatter.languageManager(), lang, session))
+                .replyMarkup(actionMarkup(NotificationFormatter.languageManager(), lang, report.uuid()))
                 .build());
     }
 
     /**
-     * Generates an inline keyboard markup for action selection based on the provided session and language settings.
+     * Generates an inline keyboard markup for action selection on the given report.
      *
      * @param lm the LanguageManager instance used for retrieving localized text; must not be null.
      * @param lang the Language object representing the user's language preference; must not be null.
-     * @param session the OperatorReportContext object representing the context for operator report handling; must not be null.
+     * @param reportUuid the UUID of the report the buttons act on; must not be null.
      * @return an instance of InlineKeyboardMarkup containing the configured keyboard layout for actions.
      */
-    static InlineKeyboardMarkup actionMarkup(LanguageManager lm, Language lang, OperatorReportContext session)
+    static InlineKeyboardMarkup actionMarkup(LanguageManager lm, Language lang, String reportUuid)
     {
-        String prefix = OperatorReportSessionManager.CALLBACK_PREFIX + ":" + session.hash() + ":";
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(
                         InlineKeyboardButton.builder().text(lm.get(lang, "report_notification", "close"))
-                                .callbackData(prefix + "close").build(),
+                                .callbackData(OperatorReportCallback.data(reportUuid, OperatorReportCallback.CLOSE)).build(),
                         InlineKeyboardButton.builder().text(lm.get(lang, "report_notification", "close_normal"))
-                                .callbackData(prefix + "class:NORMAL").build()))
+                                .callbackData(OperatorReportCallback.data(reportUuid, "NORMAL")).build()))
                 .keyboardRow(new InlineKeyboardRow(
                         InlineKeyboardButton.builder().text(lm.get(lang, "report_notification", "close_suspicious"))
-                                .callbackData(prefix + "class:SUSPICIOUS").build(),
+                                .callbackData(OperatorReportCallback.data(reportUuid, "SUSPICIOUS")).build(),
                         InlineKeyboardButton.builder().text(lm.get(lang, "report_notification", "close_malicious"))
-                                .callbackData(prefix + "class:MALICIOUS").build()))
+                                .callbackData(OperatorReportCallback.data(reportUuid, "MALICIOUS")).build()))
                 .build();
     }
 
