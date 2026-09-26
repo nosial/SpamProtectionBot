@@ -3,8 +3,6 @@ package net.nosial.spb.classes.sessions;
 import net.nosial.spb.classes.Cache;
 import net.nosial.spb.objects.NotificationTarget;
 import net.nosial.spb.objects.ReportActionState;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -31,24 +29,24 @@ public final class ReportActionTracker
     }
 
     /**
-     * Records the notifications delivered for a report of the given message. When the message was
-     * already reported and not yet acted on, the new notifications are added to the earlier ones,
-     * since an action on either removes the message they are both about.
+     * Records the notifications delivered for a report of the given message, alongside any
+     * delivered for earlier reports of it, since an action on either removes the message they are
+     * all about.
+     *
+     * <p>A moderator may press a button before every copy has been delivered and recorded. The
+     * copies are then still recorded, never replacing the claim, and {@code false} tells the caller
+     * to remove their buttons itself, since the moderator who acted may have missed them.
      *
      * @param chatId the protected chat the reported message lives in
      * @param messageId the reported message
      * @param targets the notifications that carry moderation buttons
+     * @return {@code true} when the action is still open, {@code false} when a moderator already acted
      */
-    public void track(long chatId, long messageId, List<NotificationTarget> targets)
+    public boolean track(long chatId, long messageId, List<NotificationTarget> targets)
     {
-        String key = key(chatId, messageId);
-        ReportActionState existing = this.states.getIfPresent(key);
-        List<NotificationTarget> merged = new ArrayList<>(targets);
-        if (existing != null && !existing.isConsumed())
-        {
-            merged.addAll(existing.targets());
-        }
-        this.states.put(key, new ReportActionState(merged));
+        ReportActionState state = state(chatId, messageId);
+        state.addTargets(targets);
+        return !state.isConsumed();
     }
 
     /**
@@ -63,19 +61,20 @@ public final class ReportActionTracker
      */
     public ReportActionState claim(long chatId, long messageId)
     {
-        ReportActionState state = this.states.get(key(chatId, messageId), ignored -> new ReportActionState(List.of()));
+        ReportActionState state = state(chatId, messageId);
         return state.claim() ? state : null;
     }
 
     /**
-     * Builds the cache key of a reported message.
+     * Returns the state of a reported message, creating it atomically when absent, so a claim
+     * and a concurrent {@link #track} always share one state.
      *
      * @param chatId the protected chat
      * @param messageId the reported message
-     * @return the key
+     * @return the state
      */
-    private static String key(long chatId, long messageId)
+    private ReportActionState state(long chatId, long messageId)
     {
-        return chatId + ":" + messageId;
+        return this.states.get(chatId + ":" + messageId, ignored -> new ReportActionState());
     }
 }
