@@ -276,7 +276,7 @@ report_notification:
   message_missing: "No report message was provided."
   evidence: "<b>Evidence:</b>\n"
   evidence_entry: "• <code>{0}</code>"
-  footer: "\nChoose an action to close this report. Actions expire after 8 hours."
+  footer: "\nChoose an action to close this report."
   close: "Close"
   close_normal: "Close: Normal"
   close_suspicious: "Close: Suspicious"
@@ -346,6 +346,7 @@ operator_report:
   closed_classification: "\n<b>Classification:</b> {0}"
   expired: "<b>Report Action Expired</b>\n\nThis action is no longer available."
   expired_alert: "Report Action Expired\n\nThis action is no longer available."
+  not_operator: "You are no longer authenticated as an operator. Use /auth to sign in again."
   failed_header: "<b>Report Action Failed</b>\n\n{0}"
 
 blacklist:
@@ -531,7 +532,7 @@ help_pages:
   operator_linking_title: "Linking Entities"
   operator_linking_body: "<b>Linking Entities</b>\n\n<code>/link &lt;entity&gt; &lt;target&gt; &lt;type&gt;</code> records that <code>entity</code> relates to <code>target</code> the way <code>type</code> describes:\n\n• <b>alternative</b> — <code>entity</code> is a suspected alt account of <code>target</code>; the link may not be confirmed.\n• <b>proxy</b> — <code>entity</code> is confirmed to act on <code>target</code>'s behalf, e.g. relaying its messages.\n• <b>child</b> — <code>entity</code> was created by <code>target</code> as a dependent, e.g. a bot account <code>target</code> set up.\n\n<code>entity</code> and <code>target</code> may be usernames, Telegram user ids, mentions, Federation UUIDs, hashes, or entity addresses.\n\nEach entity holds only one outgoing link at a time — linking it again replaces the previous target rather than adding to it. A target, though, can have any number of entities linking to it, which is how multiple accounts get tied together: link every known alt, proxy, or child to the same central entity rather than to each other. Querying any entity in that cluster, through <code>/info</code> or the bot's own automatic checks, then surfaces the whole group — so catching one caught account also flags its relatives."
   operator_report_assignments_title: "Report Assignments"
-  operator_report_assignments_body: "<b>Report Assignments</b>\n\nWhen a report is assigned to you, a <code>#REPORT_ASSIGNED</code> notification is sent to your private chat. It includes the report id, incident type, reported entity, who submitted it, when it was created, the report message, and a list of evidence.\n\nUse the buttons on the notification to close the report as <b>Normal</b>, <b>Suspicious</b>, or <b>Malicious</b>. These actions are one-time and expire after <b>8 hours</b>."
+  operator_report_assignments_body: "<b>Report Assignments</b>\n\nWhen a report is assigned to you, a <code>#REPORT_ASSIGNED</code> notification is sent to your private chat. It includes the report id, incident type, reported entity, who submitted it, when it was created, the report message, and a list of evidence.\n\nUse the buttons on the notification to close the report as <b>Normal</b>, <b>Suspicious</b>, or <b>Malicious</b>. The buttons stay available until the report is closed."
 link:
   usage: "Usage: <code>/link &lt;entity&gt; &lt;target&gt; &lt;type&gt;</code>. The entity and target may be usernames, Telegram user ids, mentions, Federation UUIDs, hashes, or entity addresses. The type must be one of <code>alternative</code>, <code>proxy</code>, or <code>child</code>."
   not_authenticated: "You are not authenticated as a Federation operator. Use <code>/auth &lt;token&gt;</code> first."

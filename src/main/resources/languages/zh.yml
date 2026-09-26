@@ -276,7 +276,7 @@ report_notification:
   message_missing: "未提供举报消息。"
   evidence: "<b>证据：</b>\n"
   evidence_entry: "• <code>{0}</code>"
-  footer: "\n请选择一个操作以关闭此举报。操作将在 8 小时后失效。"
+  footer: "\n请选择一个操作以关闭此举报。"
   close: "关闭"
   close_normal: "关闭：正常"
   close_suspicious: "关闭：可疑"
@@ -346,6 +346,7 @@ operator_report:
   closed_classification: "\n<b>分类：</b> {0}"
   expired: "<b>举报操作已过期</b>\n\n此操作不再可用。"
   expired_alert: "举报操作已过期\n\n此操作不再可用。"
+  not_operator: "您已不再以操作员身份认证。请使用 /auth 重新登录。"
   failed_header: "<b>举报操作失败</b>\n\n{0}"
 
 blacklist:
@@ -531,7 +532,7 @@ help_pages:
   operator_linking_title: "关联实体"
   operator_linking_body: "<b>关联实体</b>\n\n<code>/link &lt;entity&gt; &lt;target&gt; &lt;type&gt;</code> 记录 <code>entity</code> 以 <code>type</code> 所描述的方式与 <code>target</code> 相关联：\n\n• <b>alternative</b> — <code>entity</code> 是 <code>target</code> 疑似的小号；该关联可能未经证实。\n• <b>proxy</b> — 已确认 <code>entity</code> 代表 <code>target</code> 行事，例如转播其消息。\n• <b>child</b> — <code>entity</code> 是由 <code>target</code> 作为从属创建的，例如 <code>target</code> 设置的机器人账号。\n\n<code>entity</code> 和 <code>target</code> 可以是用户名、Telegram 用户 ID、Mention 提及、联邦 UUID、哈希值或实体地址。\n\n每个实体一次只能拥有一个出站关联 \u2014 再次关联它会替换以前的目标，而不是叠加。但是，一个目标可以有任意数量的实体关联到它，多个账号就是通过这种方式绑定在一起的：将每个已知的小号、代理或子账号关联到同一个核心实体，而不是互相相互关联。通过 <code>/info</code> 或机器人自身的自动检查查询该集群中的任何实体，即可展现整个群体 \u2014 因此抓住一个账号也就标记了它的关联账号。"
   operator_report_assignments_title: "举报分配"
-  operator_report_assignments_body: "<b>举报分配</b>\n\n当有举报分配给您时，系统会向您的私聊发送一条 <code>#举报已分配</code> 通知。其中包含举报 ID、违规类型、被举报实体、提交者、创建时间、举报消息和证据列表。\n\n使用通知上的按钮将举报关闭为 <b>正常</b>、<b>可疑</b> 或 <b>恶意</b>。这些操作为一次性，并在 <b>8 小时</b> 后失效。"
+  operator_report_assignments_body: "<b>举报分配</b>\n\n当有举报分配给您时，系统会向您的私聊发送一条 <code>#举报已分配</code> 通知。其中包含举报 ID、违规类型、被举报实体、提交者、创建时间、举报消息和证据列表。\n\n使用通知上的按钮将举报关闭为 <b>正常</b>、<b>可疑</b> 或 <b>恶意</b>。这些按钮在举报关闭前始终可用。"
 link:
   usage: "用法：<code>/link &lt;entity&gt; &lt;target&gt; &lt;type&gt;</code>。实体和目标可以是用户名、Telegram 用户 ID、Mention 提及、联邦 UUID、哈希值或实体地址。类型必须是 <code>alternative</code>、<code>proxy</code> 或 <code>child</code> 之一。"
   not_authenticated: "您尚未通过联邦操作员身份验证。请先使用 <code>/auth &lt;token&gt;</code>。"

@@ -276,7 +276,7 @@ report_notification:
   message_missing: "No se proporcionó ningún mensaje de reporte."
   evidence: "<b>Evidencia:</b>\n"
   evidence_entry: "• <code>{0}</code>"
-  footer: "\nElija una acción para cerrar este reporte. Las acciones expiran después de 8 horas."
+  footer: "\nElija una acción para cerrar este reporte."
   close: "Cerrar"
   close_normal: "Cerrar: Normal"
   close_suspicious: "Cerrar: Sospechoso"
@@ -346,6 +346,7 @@ operator_report:
   closed_classification: "\n<b>Clasificación:</b> {0}"
   expired: "<b>Acción de reporte expirada</b>\n\nEsta acción ya no está disponible."
   expired_alert: "Acción de reporte expirada\n\nEsta acción ya no está disponible."
+  not_operator: "Ya no está autenticado como operador. Use /auth para iniciar sesión de nuevo."
   failed_header: "<b>Error en la acción del reporte</b>\n\n{0}"
 
 blacklist:
@@ -531,7 +532,7 @@ help_pages:
   operator_linking_title: "Vincular entidades"
   operator_linking_body: "<b>Vincular entidades</b>\n\n<code>/link &lt;entidad&gt; &lt;objetivo&gt; &lt;tipo&gt;</code> registra que la <code>entidad</code> se relaciona con el <code>objetivo</code> de la manera que describe el <code>tipo</code>:\n\n• <b>alternative</b> — la <code>entidad</code> es una sospecha de cuenta secundaria (alt) del <code>objetivo</code>; es posible que el vínculo no esté confirmado.\n• <b>proxy</b> — se confirma que la <code>entidad</code> actúa en nombre del <code>objetivo</code>, p. ej., retransmitiendo sus mensajes.\n• <b>child</b> — la <code>entidad</code> fue creada por el <code>objetivo</code> como dependiente, p. ej., una cuenta de bot configurada por el <code>objetivo</code>.\n\nLa <code>entidad</code> y el <code>objetivo</code> pueden ser nombres de usuario, IDs de usuario de Telegram, menciones, UUIDs de la Federación, hashes o direcciones de entidad.\n\nCada entidad conserva solo un vínculo saliente a la vez; vincularla de nuevo reemplaza el objetivo anterior en lugar de añadirlo. Sin embargo, un objetivo puede tener cualquier número de entidades vinculadas a él, que es como se conectan varias cuentas entre sí: vincula cada alt, proxy o cuenta secundaria conocida a la misma entidad central en lugar de vincularlas entre sí. Al consultar cualquier entidad en ese grupo, a través de <code>/info</code> o de las comprobaciones automáticas del propio bot, se muestra todo el grupo, por lo que atrapar una cuenta capturada también marca a sus familiares."
   operator_report_assignments_title: "Asignaciones de reportes"
-  operator_report_assignments_body: "<b>Asignaciones de reportes</b>\n\nCuando se te asigna un reporte, se envía una notificación <code>#REPORTE_ASIGNADO</code> a tu chat privado. Incluye el ID del reporte, el tipo de incidente, la entidad reportada, quién lo envió, cuándo se creó, el mensaje del reporte y una lista de evidencias.\n\nUsa los botones de la notificación para cerrar el reporte como <b>Normal</b>, <b>Sospechoso</b> o <b>Malicioso</b>. Estas acciones son de un solo uso y expiran después de <b>8 horas</b>."
+  operator_report_assignments_body: "<b>Asignaciones de reportes</b>\n\nCuando se te asigna un reporte, se envía una notificación <code>#REPORTE_ASIGNADO</code> a tu chat privado. Incluye el ID del reporte, el tipo de incidente, la entidad reportada, quién lo envió, cuándo se creó, el mensaje del reporte y una lista de evidencias.\n\nUsa los botones de la notificación para cerrar el reporte como <b>Normal</b>, <b>Sospechoso</b> o <b>Malicioso</b>. Los botones siguen disponibles hasta que se cierre el reporte."
 
 link:
   usage: "Uso: <code>/link &lt;entidad&gt; &lt;objetivo&gt; &lt;tipo&gt;</code>. La entidad y el objetivo pueden ser nombres de usuario, IDs de usuario de Telegram, menciones, UUIDs de la Federación, hashes o direcciones de entidad. El tipo debe ser uno de los siguientes: <code>alternative</code>, <code>proxy</code> o <code>child</code>."
