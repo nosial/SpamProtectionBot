@@ -79,10 +79,16 @@ public final class ConfigurationHandler extends Handler
         String action = parts[2];
 
         ConfigurationContext session = context.sessions().configuration().find(hash);
-        if (session == null || callbackQuery.getFrom() == null || session.userId() != callbackQuery.getFrom().getId())
+        if (session == null || callbackQuery.getFrom() == null)
         {
             answerAlert(context, callbackQuery, context.languages().get(resolveLanguage(context, callbackQuery), "configuration", "session_expired"));
             editToExpired(context, callbackQuery);
+            return;
+        }
+        if (session.userId() != callbackQuery.getFrom().getId())
+        {
+            // Someone else's live menu: tell the presser, and leave the menu intact for its owner.
+            answerAlert(context, callbackQuery, context.languages().get(resolveLanguage(context, callbackQuery), "configuration", "session_not_owner"));
             return;
         }
 
