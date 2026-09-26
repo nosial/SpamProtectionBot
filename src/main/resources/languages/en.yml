@@ -345,6 +345,7 @@ operator_report:
   closed_header: "<b>Report Closed</b>\n\n<b>Report ID:</b> <code>{0}</code>"
   closed_classification: "\n<b>Classification:</b> {0}"
   expired: "<b>Report Action Expired</b>\n\nThis action is no longer available."
+  expired_alert: "Report Action Expired\n\nThis action is no longer available."
   failed_header: "<b>Report Action Failed</b>\n\n{0}"
 
 blacklist:

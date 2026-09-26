@@ -57,7 +57,7 @@ public final class OperatorReportHandler extends Handler
         OperatorReportContext session = context.sessions().operatorReport().takeOwned(parts[1], callback.getFrom().getId());
         if (session == null)
         {
-            answerAlert(context, callback, context.languages().get(lang, "operator_report", "expired"));
+            answerAlert(context, callback, context.languages().get(lang, "operator_report", "expired_alert"));
             editExpired(context, callback, message, lang);
             return;
         }

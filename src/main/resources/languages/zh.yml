@@ -345,6 +345,7 @@ operator_report:
   closed_header: "<b>举报已关闭</b>\n\n<b>举报 ID：</b> <code>{0}</code>"
   closed_classification: "\n<b>分类：</b> {0}"
   expired: "<b>举报操作已过期</b>\n\n此操作不再可用。"
+  expired_alert: "举报操作已过期\n\n此操作不再可用。"
   failed_header: "<b>举报操作失败</b>\n\n{0}"
 
 blacklist:
