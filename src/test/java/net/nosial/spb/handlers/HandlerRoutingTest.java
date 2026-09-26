@@ -167,6 +167,7 @@ class HandlerRoutingTest
                 "secset:open,                 SecretarySettingsHandler",
                 "seccontact:allow,            SecretarySettingsHandler",
                 "operator-report:close,       OperatorReportHandler",
+                "opr:close,                   OperatorReportHandler",
         })
         @DisplayName("each callback prefix reaches its owner")
         void routesCallbacks(String data, String expected)
