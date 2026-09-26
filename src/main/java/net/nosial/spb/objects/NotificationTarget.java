@@ -1,15 +1,12 @@
 package net.nosial.spb.objects;
 
 /**
- * Tracks a forwarded message and its report notification message for one notification recipient.
+ * One delivered copy of a report notification that carries moderation buttons, recorded so the
+ * buttons can be removed from every copy once a moderator acts.
  *
- * @param chatId the chat where the reported message lives
- * @param notificationChatId the chat where the notification was delivered (often a private admin chat)
- * @param notificationMessageId the message id of the report notification with action buttons
- * @param targetMessageId the original message id in the protected chat
- * @param targetAuthorId the original author id of the reported message
+ * @param chatId the chat the notification was delivered to (usually a moderator's private chat)
+ * @param messageId the notification message carrying the buttons
  */
-public record NotificationTarget(long chatId, long notificationChatId, int notificationMessageId,
-                                 long targetMessageId, long targetAuthorId)
+public record NotificationTarget(long chatId, int messageId)
 {
 }
