@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.7] - Ongoing
+## [1.0.7] - 2026-09-27
 
-This is an ongoing update
+This update introduces critical bug fixes for notifications
+
+### Changed
+ - Pressing Report False Positive no longer sends new messages to every moderator; only the notification it was
+   pressed on is updated with the report ID, and moderators pressing it on their own copies afterwards are told the
+   report was already submitted
+
+### Fixed
+ - Fixed scanning notifications (`#SCAN_MATCH`, `#CONTENT_DELETED`, `#MEMBER_RESTRICTED`, `#MEMBER_BANNED`) not
+   showing the message they were about; the message is now forwarded with the notification replying to it, or its
+   captured text and attachments are re-sent when it was deleted
 
 
 ## [1.0.6] - 2026-09-27
