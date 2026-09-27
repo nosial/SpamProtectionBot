@@ -72,6 +72,19 @@ public final class FalsePositiveReportSessionManager extends AbstractSessionMana
     }
 
     /**
+     * Records a successful submission and keeps the used action available to {@link #find(String)},
+     * so later presses of the same button can be told the report was already submitted.
+     *
+     * @param session the action that was taken
+     * @param reportUuid the submitted report's UUID
+     */
+    public void markSubmitted(FalsePositiveReportContext session, String reportUuid)
+    {
+        session.submitted(reportUuid);
+        store(session);
+    }
+
+    /**
      * Generates the callback data string for the specified false-positive report session.
      *
      * @param session the {@code FalsePositiveReportContext} representing the session associated
