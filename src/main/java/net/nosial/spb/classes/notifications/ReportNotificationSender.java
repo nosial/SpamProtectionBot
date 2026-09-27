@@ -8,26 +8,30 @@ import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.objects.Language;
+import net.nosial.spb.objects.database.OperatorIdentity;
 import net.nosial.spb.utilities.EntityResolver;
+import net.nosial.spb.utilities.EvidenceRenderer;
 import net.nosial.spb.utilities.HtmlEscape;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Delivers a single-message report notification to an operator when a report is assigned to them.
+ * Delivers a report notification to an operator when a report is assigned to them.
  *
  * <p>The message begins with {@code #REPORT_ASSIGNED} and contains the report metadata, the
- * report message (if any), a list of evidence UUIDs, and the operator action keyboard.
+ * report message (if any), a list of evidence UUIDs, and the operator action keyboard. Each evidence
+ * record then follows as a reply to it, with the record's file attachments replying to the record.
  */
 final class ReportNotificationSender implements NotificationSink
 {
@@ -57,14 +61,62 @@ final class ReportNotificationSender implements NotificationSink
     public void send(long telegramUserId, ReportRecord report) throws Exception
     {
         Language lang = this.managers.languagePreferences().getUserLanguage(telegramUserId);
-        List<String> evidenceIds = loadEvidenceIds(this.federation, report.uuid());
+        List<EvidenceRecord> evidence = loadEvidence(this.federation, report.uuid());
+        List<String> evidenceIds = evidence.stream().map(EvidenceRecord::uuid).toList();
 
-        this.telegramClient.execute(SendMessage.builder()
+        Message notification = this.telegramClient.execute(SendMessage.builder()
                 .chatId(String.valueOf(telegramUserId))
                 .text(detailsHtml(report, evidenceIds, lang))
                 .parseMode(ParseMode.HTML)
                 .replyMarkup(actionMarkup(NotificationFormatter.languageManager(), lang, report.uuid()))
                 .build());
+
+        sendEvidence(telegramUserId, notification, evidence, lang);
+    }
+
+    /**
+     * Sends each evidence record of the report as a reply to its notification, followed by the
+     * record's file attachments as replies to the record, so the operator sees the report and its
+     * evidence together.
+     *
+     * <p>The notification has already been delivered at this point, so a failure is logged and
+     * never propagates: the caller would otherwise treat the whole notification as undelivered.
+     *
+     * @param telegramUserId the operator's Telegram user id
+     * @param notification the delivered {@code #REPORT_ASSIGNED} message
+     * @param evidence the report's evidence records
+     * @param lang the operator's language
+     */
+    private void sendEvidence(long telegramUserId, Message notification, List<EvidenceRecord> evidence, Language lang)
+    {
+        if (evidence.isEmpty())
+        {
+            return;
+        }
+
+        // Confidential evidence and its files are visible only to the operator they belong to, so
+        // attachments are read with the operator's own credential when one is stored.
+        String accessToken = this.managers.operators().getOperator(telegramUserId)
+                .map(OperatorIdentity::accessToken).orElse(null);
+        for (EvidenceRecord record : evidence)
+        {
+            Integer replyToId = notification.getMessageId();
+            try
+            {
+                Message info = this.telegramClient.execute(SendMessage.builder()
+                        .chatId(String.valueOf(telegramUserId))
+                        .text(EvidenceRenderer.infoHtml(NotificationFormatter.languageManager(), lang, record))
+                        .parseMode(ParseMode.HTML)
+                        .replyToMessageId(notification.getMessageId())
+                        .build());
+                replyToId = info.getMessageId();
+            }
+            catch (TelegramApiException e)
+            {
+                LOGGER.warn("Unable to send evidence {} to Telegram user {}: {}", record.uuid(), telegramUserId, e.getMessage());
+            }
+            EvidenceRenderer.sendAttachments(this.telegramClient, this.federation, accessToken, record, telegramUserId, replyToId);
+        }
     }
 
     /**
@@ -178,25 +230,17 @@ final class ReportNotificationSender implements NotificationSink
     }
 
     /**
-     * Loads a list of evidence UUIDs associated with a specific report.
-     * This method interacts with the FederationService to retrieve the evidence records
-     * for a given report and extracts their UUIDs. If there is an error during the process,
-     * an empty list is returned.
+     * Loads the evidence records associated with a specific report.
      *
      * @param federation the FederationService instance used to fetch evidence records; must not be null.
-     * @param reportUuid the UUID of the report for which evidence IDs need to be loaded; must not be null.
-     * @return a list of evidence UUIDs associated with the specified report, or an empty list if an error occurs.
+     * @param reportUuid the UUID of the report whose evidence is loaded; must not be null.
+     * @return the report's evidence records, or an empty list if an error occurs.
      */
-    private static List<String> loadEvidenceIds(FederationService federation, String reportUuid)
+    private static List<EvidenceRecord> loadEvidence(FederationService federation, String reportUuid)
     {
         try
         {
-            List<String> ids = new ArrayList<>();
-            for (EvidenceRecord evidence : federation.reportEvidence(reportUuid, EVIDENCE_PAGE_SIZE))
-            {
-                ids.add(evidence.uuid());
-            }
-            return ids;
+            return federation.reportEvidence(reportUuid, EVIDENCE_PAGE_SIZE);
         }
         catch (FederationException e)
         {
