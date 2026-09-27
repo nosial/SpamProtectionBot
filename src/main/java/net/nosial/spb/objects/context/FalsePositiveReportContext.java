@@ -27,6 +27,7 @@ public final class FalsePositiveReportContext implements Session
     private final Map<String, Object> metadata;
     private final long createdAt;
     private final AtomicBoolean available = new AtomicBoolean(true);
+    private volatile String reportUuid;
 
     /**
      * Creates the one-shot action offered on a scanning notification, timestamped now.
@@ -139,6 +140,26 @@ public final class FalsePositiveReportContext implements Session
     public boolean claim()
     {
         return this.available.compareAndSet(true, false);
+    }
+
+    /**
+     * Returns the false-positive report submitted through this action.
+     *
+     * @return the report UUID, or {@code null} while no report has been submitted
+     */
+    public String reportUuid()
+    {
+        return this.reportUuid;
+    }
+
+    /**
+     * Records the false-positive report submitted through this action.
+     *
+     * @param reportUuid the submitted report's UUID
+     */
+    public void submitted(String reportUuid)
+    {
+        this.reportUuid = reportUuid;
     }
 
     @Override
