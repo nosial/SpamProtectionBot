@@ -13,6 +13,8 @@ This update introduces critical bug fixes for notifications
  - Pressing Report False Positive no longer sends new messages to every moderator; only the notification it was
    pressed on is updated with the report ID, and moderators pressing it on their own copies afterwards are told the
    report was already submitted
+ - `#REPORT_ASSIGNED` notifications are now followed by each of the report's evidence records as a reply, with the
+   evidence's file attachments replying to it, so operators can review the report and its evidence together
 
 ### Fixed
  - Fixed scanning notifications (`#SCAN_MATCH`, `#CONTENT_DELETED`, `#MEMBER_RESTRICTED`, `#MEMBER_BANNED`) not
