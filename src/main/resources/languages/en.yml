@@ -459,6 +459,7 @@ join_protection:
 false_positive:
   expired: "This Report False Positive action has expired or was already used."
   not_permitted: "Only moderators of the chat can report a false positive."
+  already_submitted: "A false-positive report has already been submitted for this message."
   submitted: "False-positive report submitted."
   submit_failed: "The false-positive report could not be submitted."
   submitted_block: "<b>False-Positive Report Submitted</b>\n<b>Report ID:</b> <code>{0}</code>"

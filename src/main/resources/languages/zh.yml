@@ -459,6 +459,7 @@ join_protection:
 false_positive:
   expired: "此误报举报操作已过期或已被使用。"
   not_permitted: "只有该群组的管理员才能举报误报。"
+  already_submitted: "此消息的误报举报已提交。"
   submitted: "误报举报已提交。"
   submit_failed: "误报举报提交失败。"
   submitted_block: "<b>误报举报已提交</b>\n<b>举报 ID：</b> <code>{0}</code>"
