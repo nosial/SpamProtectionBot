@@ -713,14 +713,19 @@ public final class ScanningHandler extends Handler
         // Reporting a false positive submits as the bot itself, which the server refuses
         // unconditionally without client permissions. Offering the button anyway would only ever
         // end in a failure alert, so it — and the session it would need — is skipped entirely.
+        String text = MessageContent.contentToScan(message);
         InlineKeyboardMarkup markup = null;
         if (context.federation().isAuthenticated())
         {
-            FalsePositiveReportContext falsePositive = context.sessions().falsePositive().create(message, MessageContent.contentToScan(message), falsePositiveAttachments);
+            FalsePositiveReportContext falsePositive = context.sessions().falsePositive().create(message, text, falsePositiveAttachments);
             markup = falsePositiveMarkup(context.languages(), lang, falsePositive);
         }
 
-        NotificationSender.notify(context, message.getChatId(), scanningNotificationHtml(context.languages(), lang, configuration, message, outcome), markup);
+        // The notification replies to the flagged message so moderators can see what matched: the
+        // message itself while it still exists, or its captured content once it has been deleted.
+        Integer forwardMessageId = outcome.deletedMessageIds().isEmpty() ? message.getMessageId() : null;
+        NotificationSender.notifyWithContent(context, message.getChatId(), scanningNotificationHtml(context.languages(), lang, configuration, message, outcome),
+                markup, forwardMessageId, text, falsePositiveAttachments);
     }
 
     /**
