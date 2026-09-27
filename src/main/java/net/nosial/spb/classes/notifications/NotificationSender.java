@@ -1,21 +1,27 @@
 package net.nosial.spb.classes.notifications;
 
+import net.nosial.spb.classes.ReportSubmissionService;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.NotificationTarget;
+import net.nosial.spb.objects.ReportAttachment;
 import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.context.HandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -78,6 +84,45 @@ public final class NotificationSender
             Integer threadId = channelLinkId != null && destination == channelLinkId
                     && configuration.channelLinkThreadId() != null ? configuration.channelLinkThreadId().intValue() : null;
             send(context, destination, html, markup, threadId, null);
+        }
+    }
+
+    /**
+     * Delivers an HTML moderation notification about a message, showing the message first and
+     * sending the notification as a reply to it, so the recipient can see what was acted on.
+     *
+     * <p>The message is forwarded while it still exists. When it was deleted, or cannot be
+     * forwarded (a chat that restricts saving content), its cached text and attachments are
+     * re-sent instead.
+     *
+     * @param context current update context
+     * @param protectedChatId chat where the moderation event occurred
+     * @param html Telegram HTML notification text
+     * @param markup optional inline action keyboard
+     * @param messageId the message to forward, or {@code null} when it no longer exists
+     * @param text the message's cached text, re-sent when it cannot be forwarded
+     * @param attachments the message's cached attachments, re-sent when it cannot be forwarded
+     */
+    public static void notifyWithContent(HandlerContext context, long protectedChatId, String html, InlineKeyboardMarkup markup,
+                                         Integer messageId, String text, List<ReportAttachment> attachments)
+    {
+        if (html == null || html.isBlank())
+        {
+            return;
+        }
+
+        ChatConfiguration configuration = resolveConfiguration(context, protectedChatId);
+        Long channelLinkId = configuration.channelLinkId();
+        for (long destination : resolveDestinations(context, configuration))
+        {
+            Integer threadId = channelLinkId != null && destination == channelLinkId
+                    && configuration.channelLinkThreadId() != null ? configuration.channelLinkThreadId().intValue() : null;
+            Message content = messageId != null ? forward(context, protectedChatId, destination, messageId, threadId) : null;
+            if (content == null)
+            {
+                content = resendContent(context, destination, text, attachments, threadId);
+            }
+            send(context, destination, html, markup, threadId, content != null ? content.getMessageId() : null);
         }
     }
 
@@ -242,19 +287,131 @@ public final class NotificationSender
      */
     public static Message forward(HandlerContext context, long fromChatId, long toChatId, int messageId)
     {
+        return forward(context, fromChatId, toChatId, messageId, null);
+    }
+
+    /**
+     * Forwards a message between chats, into a forum topic of the destination when one is given.
+     *
+     * @param context current update context
+     * @param fromChatId the chat the message lives in
+     * @param toChatId the chat to forward it to
+     * @param messageId the message to forward
+     * @param messageThreadId optional forum topic to post in
+     * @return the forwarded message, or {@code null} on failure
+     */
+    public static Message forward(HandlerContext context, long fromChatId, long toChatId, int messageId, Integer messageThreadId)
+    {
         try
         {
-            return context.telegramClient().execute(ForwardMessage.builder()
+            var request = ForwardMessage.builder()
                     .chatId(String.valueOf(toChatId))
                     .fromChatId(String.valueOf(fromChatId))
-                    .messageId(messageId)
-                    .build());
+                    .messageId(messageId);
+            if (messageThreadId != null)
+            {
+                request.messageThreadId(messageThreadId);
+            }
+            return context.telegramClient().execute(request.build());
         }
         catch (TelegramApiException e)
         {
             LOGGER.warn("Unable to forward message {} from chat {} to chat {}: {}",
                     messageId, fromChatId, toChatId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Re-sends a message's cached text and attachments to one destination, for when the message
+     * itself can no longer be forwarded.
+     *
+     * @param context current update context
+     * @param destination the Telegram user or chat id to send the content to
+     * @param text the cached text, or {@code null}
+     * @param attachments the cached attachments, or {@code null}
+     * @param messageThreadId optional forum topic to post in
+     * @return the last message sent, or {@code null} when nothing could be delivered
+     */
+    public static Message resendContent(HandlerContext context, long destination, String text, List<ReportAttachment> attachments, Integer messageThreadId)
+    {
+        Message last = null;
+        if (text != null && !text.isBlank())
+        {
+            try
+            {
+                var request = SendMessage.builder().chatId(String.valueOf(destination)).text(text);
+                if (messageThreadId != null)
+                {
+                    request.messageThreadId(messageThreadId);
+                }
+                last = context.telegramClient().execute(request.build());
+            }
+            catch (TelegramApiException e)
+            {
+                LOGGER.warn("Unable to re-send message text to {}: {}", destination, e.getMessage());
+            }
+        }
+        if (attachments != null)
+        {
+            for (ReportAttachment attachment : attachments)
+            {
+                Message sent = resendAttachment(context, destination, attachment, messageThreadId);
+                if (sent != null)
+                {
+                    last = sent;
+                }
+            }
+        }
+        return last;
+    }
+
+    /**
+     * Uploads one cached attachment to a destination as a document captioned with its file name.
+     *
+     * @return the sent message, or {@code null} when the attachment is empty or cannot be sent
+     */
+    private static Message resendAttachment(HandlerContext context, long destination, ReportAttachment attachment, Integer messageThreadId)
+    {
+        byte[] content = attachment.content();
+        if (content == null || content.length == 0)
+        {
+            return null;
+        }
+
+        String fileName = attachment.fileName() != null && !attachment.fileName().isBlank() ? attachment.fileName() : "telegram-" + attachment.fileId();
+        File staged = null;
+        try
+        {
+            staged = ReportSubmissionService.stageBytesToFile(content, fileName);
+            var request = SendDocument.builder()
+                    .chatId(String.valueOf(destination))
+                    .document(new InputFile(staged))
+                    .caption(fileName);
+            if (messageThreadId != null)
+            {
+                request.messageThreadId(messageThreadId);
+            }
+            return context.telegramClient().execute(request.build());
+        }
+        catch (Exception e)
+        {
+            LOGGER.warn("Unable to re-send attachment {} to {}: {}", attachment.fileId(), destination, e.getMessage());
+            return null;
+        }
+        finally
+        {
+            if (staged != null)
+            {
+                try
+                {
+                    Files.deleteIfExists(staged.toPath());
+                }
+                catch (Exception e)
+                {
+                    LOGGER.debug("Could not delete temporary attachment {}: {}", staged, e.getMessage());
+                }
+            }
         }
     }
 
