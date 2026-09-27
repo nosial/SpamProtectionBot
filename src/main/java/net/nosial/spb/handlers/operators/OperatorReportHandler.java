@@ -61,7 +61,7 @@ public final class OperatorReportHandler extends Handler
         }
 
         // Notifications are only delivered to the operator's private chat with the bot.
-        if (message.getChatId() == null || message.getChatId() != callback.getFrom().getId())
+        if (!callback.getFrom().getId().equals(message.getChatId()))
         {
             answer(context, callback);
             return;
