@@ -5,9 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.8] - Ongoing
+## [1.0.8] - 2026-09-28
 
 This is an ongoing update
+
+### Changed
+ - Passive chats are no longer notified when Federation only suggests treating a message or its author with caution;
+   Moderate and Strict delete a cautioned message that contains media or links and send a notification, and leave a
+   cautioned plain-text message alone
+ - A scanning notification is now also sent when the action it reports failed, saying what could not be done, instead
+   of being dropped
+
+### Fixed
+ - Fixed scanning notifications re-sending a deleted message's text and attachments as the bot's own messages; the
+   message (or every part of an album) is now forwarded to each moderator and linked chat before it is deleted or its
+   author is acted on, and the notification replies to the forwarded copy. When a message cannot be forwarded, the
+   notification is sent on its own and the message is never reproduced
 
 
 
