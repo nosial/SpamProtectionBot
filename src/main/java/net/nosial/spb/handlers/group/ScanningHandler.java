@@ -21,6 +21,7 @@ import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.MediaGroupState;
+import net.nosial.spb.objects.NotificationAnchor;
 import net.nosial.spb.objects.context.FalsePositiveReportContext;
 import net.nosial.spb.objects.ReportAttachment;
 import net.nosial.spb.objects.ScanningOutcome;
@@ -214,25 +215,61 @@ public final class ScanningHandler extends Handler
 
         boolean deleteContent = context.telegramClient() != null
                 && deletesContent(context, behavior, contentSuggestion, entitySuggestion, message);
-        List<ReportAttachment> falsePositiveAttachments = configuration.scanningNotificationsEnabled()
-                ? captureReportAttachments(context, message) : List.of();
-        List<Integer> deletedMessageIds = List.of();
-        if (deleteContent)
+        boolean restrictText = behavior == ScanningBehavior.STRICT && entitySuggestion == SuggestedAction.CAUTION
+                && !isTextRestricted(context, message);
+
+        // Passive only ever notifies, and a caution alone is not worth a notification there. The
+        // other behaviors notify only about something they act on, which leaves a cautioned
+        // plain-text message alone entirely.
+        if (behavior == ScanningBehavior.PASSIVE)
         {
-            if ((contentSuggestion == SuggestedAction.CAUTION || entitySuggestion == SuggestedAction.CAUTION)
-                    && mediaGroup != null && mediaGroup.restrict())
+            // The member's result is recorded before the caution check, so a caution between two
+            // identical flags still makes the second one new again.
+            if (!configuration.scanningNotificationsEnabled()
+                    || !passiveObservationDue(context, message, contentSuggestion, entitySuggestion)
+                    || isCautionOnly(contentSuggestion, entitySuggestion))
             {
-                deletedMessageIds = deleteMediaGroup(context, message, mediaGroup);
+                return;
             }
-            else if (ModerationActions.deleteMessage(context, message))
-            {
-                deletedMessageIds = List.of(message.getMessageId());
-            }
+        }
+        else if (!deleteContent && entityAction == ModerationAction.NONE && !restrictText)
+        {
+            return;
+        }
+
+        List<Integer> targetMessageIds = List.of(message.getMessageId());
+        boolean deleteAlbum = deleteContent
+                && (contentSuggestion == SuggestedAction.CAUTION || entitySuggestion == SuggestedAction.CAUTION)
+                && mediaGroup != null && mediaGroup.restrict();
+        if (deleteAlbum)
+        {
+            targetMessageIds = List.copyOf(mediaGroup.messageIds());
+        }
+
+        // Moderators are shown the message by forwarding it, which Telegram refuses once it is
+        // deleted, so it is forwarded to every destination before anything is done to it and the
+        // notification replies to that copy afterwards.
+        List<ReportAttachment> falsePositiveAttachments = List.of();
+        List<NotificationAnchor> anchors = List.of();
+        if (configuration.scanningNotificationsEnabled())
+        {
+            falsePositiveAttachments = captureReportAttachments(context, message);
+            anchors = NotificationSender.forwardForNotification(context, message.getChatId(), targetMessageIds);
+        }
+
+        List<Integer> deletedMessageIds = List.of();
+        if (deleteAlbum)
+        {
+            deletedMessageIds = deleteMessages(context, message.getChatId(), targetMessageIds);
+        }
+        else if (deleteContent && ModerationActions.deleteMessage(context, message))
+        {
+            deletedMessageIds = List.of(message.getMessageId());
         }
         boolean entityActionApplied = EntityActionResolver.apply(context, message.getChatId(), message.getFrom().getId(), entityAction, entityQuery);
 
         boolean textRestrictionApplied = false;
-        if (behavior == ScanningBehavior.STRICT && entitySuggestion == SuggestedAction.CAUTION && !isTextRestricted(context, message))
+        if (restrictText)
         {
             textRestrictionApplied = ModerationActions.restrictMediaOnly(context, message.getChatId(), message.getFrom().getId());
             if (textRestrictionApplied)
@@ -241,24 +278,27 @@ public final class ScanningHandler extends Handler
             }
         }
 
-        if (behavior == ScanningBehavior.PASSIVE)
-        {
-            if (!configuration.scanningNotificationsEnabled())
-            {
-                return;
-            }
-            if (!passiveObservationDue(context, message, contentSuggestion, entitySuggestion))
-            {
-                return;
-            }
-        }
-        if (behavior != ScanningBehavior.PASSIVE && deletedMessageIds.isEmpty() && !entityActionApplied && !textRestrictionApplied)
-        {
-            return;
-        }
+        // Sent even when every action failed: the message has already been forwarded, and the
+        // notification says what could not be done.
         sendScanningObservation(context, configuration, message,
                 new ScanningOutcome(contentSuggestion, entitySuggestion, deletedMessageIds, deleteContent, entityAction, entityActionApplied, textRestrictionApplied),
-                falsePositiveAttachments);
+                falsePositiveAttachments, anchors);
+    }
+
+    /**
+     * Returns whether Federation's only concern is a caution, with nothing asking for content or
+     * the member to be blocked.
+     *
+     * @param contentSuggestion what the content scan suggested, or {@code null} when nothing
+     * @param entitySuggestion what the author's entity query suggested, or {@code null} when nothing
+     * @return {@code true} when at least one suggestion is a caution and neither is anything else
+     */
+    static boolean isCautionOnly(SuggestedAction contentSuggestion, SuggestedAction entitySuggestion)
+    {
+        boolean anyCaution = contentSuggestion == SuggestedAction.CAUTION || entitySuggestion == SuggestedAction.CAUTION;
+        return anyCaution
+                && (contentSuggestion == null || contentSuggestion == SuggestedAction.CAUTION)
+                && (entitySuggestion == null || entitySuggestion == SuggestedAction.CAUTION);
     }
     /**
      * Publishes the domain names and IP addresses mentioned in the message as Federation host
@@ -362,7 +402,7 @@ public final class ScanningHandler extends Handler
      * <p>Blocked content is deleted by Moderate and Strict behaviors. Cautioned content is
      * deleted only when it is anything other than a plain text message without URLs - photos,
      * videos, stickers, other media, links, or messages without text are removed, while basic
-     * text messages with no URLs are kept. Passive only reports it.
+     * text messages with no URLs are kept. Passive never deletes.
      *
      * @param behavior the configured scanning behavior
      * @param contentSuggestion the content suggestion
@@ -666,19 +706,19 @@ public final class ScanningHandler extends Handler
     }
 
     /**
-     * Deletes all messages in the specified media group.
+     * Deletes the given messages of a chat, such as the parts of a media group.
      *
      * @param context     The handler context providing access to messaging services and resources.
-     * @param message     The original message associated with the media group.
-     * @param mediaGroup  The media group containing the IDs of the messages to be deleted.
+     * @param chatId      The chat the messages live in.
+     * @param messageIds  The messages to delete.
      * @return A list of message IDs that were successfully deleted.
      */
-    private static List<Integer> deleteMediaGroup(HandlerContext context, Message message, MediaGroupState mediaGroup)
+    private static List<Integer> deleteMessages(HandlerContext context, long chatId, List<Integer> messageIds)
     {
         List<Integer> deletedMessageIds = new ArrayList<>();
-        for (int messageId : mediaGroup.messageIds())
+        for (int messageId : messageIds)
         {
-            if (ModerationActions.deleteMessage(context, message.getChatId(), messageId))
+            if (ModerationActions.deleteMessage(context, chatId, messageId))
             {
                 deletedMessageIds.add(messageId);
             }
@@ -700,8 +740,11 @@ public final class ScanningHandler extends Handler
      * @param outcome the result of the scanning operation, represented as a {@link ScanningOutcome}.
      * @param falsePositiveAttachments a list of {@link ReportAttachment} entities that might be relevant
      *                                 for reporting a false positive case.
+     * @param anchors the destinations the message was forwarded to before it was acted on; the
+     *                notification replies to each forwarded copy.
      */
-    private void sendScanningObservation(HandlerContext context, ChatConfiguration configuration, Message message, ScanningOutcome outcome, List<ReportAttachment> falsePositiveAttachments)
+    private void sendScanningObservation(HandlerContext context, ChatConfiguration configuration, Message message, ScanningOutcome outcome,
+                                         List<ReportAttachment> falsePositiveAttachments, List<NotificationAnchor> anchors)
     {
         if (!configuration.scanningNotificationsEnabled())
         {
@@ -721,11 +764,8 @@ public final class ScanningHandler extends Handler
             markup = falsePositiveMarkup(context.languages(), lang, falsePositive);
         }
 
-        // The notification replies to the flagged message so moderators can see what matched: the
-        // message itself while it still exists, or its captured content once it has been deleted.
-        Integer forwardMessageId = outcome.deletedMessageIds().isEmpty() ? message.getMessageId() : null;
-        NotificationSender.notifyWithContent(context, message.getChatId(), scanningNotificationHtml(context.languages(), lang, configuration, message, outcome),
-                markup, forwardMessageId, text, falsePositiveAttachments);
+        NotificationSender.notifyAnchored(context, anchors,
+                scanningNotificationHtml(context.languages(), lang, configuration, message, outcome), markup);
     }
 
     /**
