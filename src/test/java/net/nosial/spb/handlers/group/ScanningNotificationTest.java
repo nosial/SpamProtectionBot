@@ -61,6 +61,18 @@ class ScanningNotificationTest
     }
 
     @Test
+    @DisplayName("a caution alone is kept quiet in Passive, but not when something else is flagged too")
+    void cautionOnlyIsRecognised()
+    {
+        assertTrue(ScanningHandler.isCautionOnly(SuggestedAction.CAUTION, null));
+        assertTrue(ScanningHandler.isCautionOnly(null, SuggestedAction.CAUTION));
+        assertTrue(ScanningHandler.isCautionOnly(SuggestedAction.CAUTION, SuggestedAction.CAUTION));
+        assertFalse(ScanningHandler.isCautionOnly(null, null), "nothing flagged is not a caution");
+        assertFalse(ScanningHandler.isCautionOnly(SuggestedAction.BLOCK_CONTENT, SuggestedAction.CAUTION));
+        assertFalse(ScanningHandler.isCautionOnly(SuggestedAction.CAUTION, SuggestedAction.PERMANENTLY_BLOCK_ENTITY));
+    }
+
+    @Test
     @DisplayName("members joining or leaving are left to join protection")
     void membershipServiceMessagesAreRecognised()
     {
