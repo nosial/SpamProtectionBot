@@ -1,5 +1,7 @@
 package net.nosial.spb.handlers.operators;
 
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.classes.FederationService;
@@ -88,7 +90,8 @@ public final class AuthenticationHandler extends Handler
         try
         {
             OperatorRecord operator = authenticate(context.managers().operators(), context.federation(), accessToken, userId);
-            sendReply(context, message, context.languages().get(lang, "authentication", "authenticated", HtmlEscape.escape(operator.name()), HtmlEscape.escape(operator.uuid())));
+            sendHtml(context, message, context.languages().get(lang, "authentication", "authenticated", HtmlEscape.escape(operator.name()), HtmlEscape.escape(operator.uuid())),
+                    false, operatorLinkMarkup(context, lang, operator));
         }
         catch (FederationException | IllegalArgumentException e)
         {
@@ -157,7 +160,7 @@ public final class AuthenticationHandler extends Handler
         try
         {
             OperatorRecord operator = context.federation().operatorFor(identity.get().accessToken());
-            sendReply(context, message, operatorInfo(context, lang, operator));
+            sendHtml(context, message, operatorInfo(context, lang, operator), false, operatorLinkMarkup(context, lang, operator));
         }
         catch (FederationException | IllegalArgumentException e)
         {
@@ -208,6 +211,19 @@ public final class AuthenticationHandler extends Handler
                 + context.languages().get(lang, "authentication", "permission_operator", permission(context, lang, operator.operatorPermissions())) + "\n"
                 + context.languages().get(lang, "authentication", "permission_management", permission(context, lang, operator.managementPermissions())) + "\n"
                 + context.languages().get(lang, "authentication", "permission_auto_assign", permission(context, lang, operator.autoAssign()));
+    }
+
+    /**
+     * Returns the keyboard linking an operator's page in the Federation Web Application.
+     *
+     * @param context the handler execution context providing the web application links
+     * @param lang the language of the button label
+     * @param operator the operator to link
+     * @return the keyboard, or {@code null} when no web application is configured
+     */
+    private static InlineKeyboardMarkup operatorLinkMarkup(HandlerContext context, Language lang, OperatorRecord operator)
+    {
+        return FederationWebLinks.attach(null, context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.OPERATOR, operator.uuid()));
     }
 
     /**
