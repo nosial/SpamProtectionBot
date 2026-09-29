@@ -62,6 +62,7 @@ public class Configuration
 
     private final String federationEndpoint;
     private final String federationAccessToken;
+    private final String federationWebApplicationEndpoint;
 
     /**
      * Loads and validates the configuration from the YAML file at the given path.
@@ -109,11 +110,13 @@ public class Configuration
         {
             this.federationEndpoint = null;
             this.federationAccessToken = null;
+            this.federationWebApplicationEndpoint = null;
         }
         else
         {
             this.federationEndpoint = requireText(getString(federation, "endpoint", false), "federation.endpoint");
             this.federationAccessToken = getString(federation, "access_token", true);
+            this.federationWebApplicationEndpoint = getString(federation, "web_application_endpoint", true);
         }
 
         validate();
@@ -318,6 +321,19 @@ public class Configuration
     }
 
     /**
+     * Returns the base URL of a Federation Web Application instance serving the same Federation
+     * server. When set, messages that display a Federation record carry a button opening that record
+     * in the web application.
+     *
+     * @return the web application URL, or {@code null} when not configured or when the
+     *         {@code federation} section is absent
+     */
+    public String getFederationWebApplicationEndpoint()
+    {
+        return this.federationWebApplicationEndpoint;
+    }
+
+    /**
      * Converts a file path string into a {@link Path}.
      *
      * @param filePath the configuration file path
@@ -442,6 +458,11 @@ public class Configuration
             validateEndpoint(this.federationEndpoint);
         }
 
+        if (this.federationWebApplicationEndpoint != null)
+        {
+            validateWebApplicationEndpoint(this.federationWebApplicationEndpoint);
+        }
+
         if (this.federationAccessToken != null && this.federationAccessToken.chars().anyMatch(Character::isWhitespace))
         {
             throw new ConfigurationException("Field 'federation.access_token' must not contain whitespace");
@@ -471,6 +492,42 @@ public class Configuration
         if (uri.getHost() == null || uri.getHost().isEmpty())
         {
             throw new ConfigurationException("Field 'federation.endpoint' must have a valid host, got " + endpoint);
+        }
+    }
+
+    /**
+     * Verifies that the Federation Web Application endpoint is an absolute {@code http} or
+     * {@code https} URL with a host, since Telegram rejects any other URL on an inline button and
+     * would then refuse the whole message carrying it.
+     *
+     * @param endpoint the web application URL
+     * @throws ConfigurationException If the endpoint is not a valid http(s) URL with a host
+     */
+    private static void validateWebApplicationEndpoint(String endpoint) throws ConfigurationException
+    {
+        URI uri;
+        try
+        {
+            uri = new URI(endpoint);
+        }
+        catch (URISyntaxException e)
+        {
+            throw new ConfigurationException("Field 'federation.web_application_endpoint' must be a valid URL, got " + endpoint, e);
+        }
+
+        if (uri.getScheme() == null || !(uri.getScheme().equalsIgnoreCase("https") || uri.getScheme().equalsIgnoreCase("http")))
+        {
+            throw new ConfigurationException("Field 'federation.web_application_endpoint' must be an http or https URL, got " + endpoint);
+        }
+
+        if (uri.getHost() == null || uri.getHost().isEmpty())
+        {
+            throw new ConfigurationException("Field 'federation.web_application_endpoint' must have a valid host, got " + endpoint);
+        }
+
+        if (uri.getQuery() != null || uri.getFragment() != null)
+        {
+            throw new ConfigurationException("Field 'federation.web_application_endpoint' must not contain a query or fragment, got " + endpoint);
         }
     }
 
@@ -710,6 +767,7 @@ public class Configuration
                 + ", writeTimeoutSeconds=" + this.writeTimeoutSeconds
                 + ", shutdownTimeoutSeconds=" + this.shutdownTimeoutSeconds
                 + ", federation=" + (hasFederation() ? this.federationEndpoint : "disabled")
+                + ", federationWebApplication=" + (this.federationWebApplicationEndpoint != null ? this.federationWebApplicationEndpoint : "disabled")
                 + "}";
     }
 }
