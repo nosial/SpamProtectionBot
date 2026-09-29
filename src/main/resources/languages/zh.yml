@@ -51,6 +51,7 @@ buttons:
   view_entity: "查看实体"
   view_blacklist: "查看黑名单记录"
   view_operator: "查看操作员"
+  view_target: "查看目标"
 
 start:
   channel_message: "频道消息"

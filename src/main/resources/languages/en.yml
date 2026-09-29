@@ -51,6 +51,7 @@ buttons:
   view_entity: "View Entity"
   view_blacklist: "View Blacklist Record"
   view_operator: "View Operator"
+  view_target: "View Target"
 
 start:
   channel_message: "Channel Message"

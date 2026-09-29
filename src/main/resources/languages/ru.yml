@@ -51,6 +51,7 @@ buttons:
   view_entity: "Открыть сущность"
   view_blacklist: "Открыть запись чёрного списка"
   view_operator: "Открыть оператора"
+  view_target: "Открыть цель"
 
 start:
   channel_message: "Сообщение из канала"

@@ -51,6 +51,7 @@ buttons:
   view_entity: "Ver entidad"
   view_blacklist: "Ver registro de lista negra"
   view_operator: "Ver operador"
+  view_target: "Ver objetivo"
 
 start:
   channel_message: "Mensaje de canal"
