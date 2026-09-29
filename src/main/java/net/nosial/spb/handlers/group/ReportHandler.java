@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.group;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
@@ -429,8 +430,10 @@ public final class ReportHandler extends Handler
             evidence = List.of();
         }
 
-        String html = buildReportInfoHtml(context.languages(), resolveLanguage(context, message), report, evidence);
-        sendHtml(context, message, html, isGroupChat(message), null);
+        Language lang = resolveLanguage(context, message);
+        String html = buildReportInfoHtml(context.languages(), lang, report, evidence);
+        sendHtml(context, message, html, isGroupChat(message), FederationWebLinks.attach(null,
+                context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.REPORT, report.uuid())));
     }
 
     /**
