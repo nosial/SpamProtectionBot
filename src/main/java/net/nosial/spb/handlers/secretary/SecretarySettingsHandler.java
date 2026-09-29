@@ -441,10 +441,8 @@ public final class SecretarySettingsHandler extends Handler
                     context.telegramClient().execute(EditMessageReplyMarkup.builder()
                             .chatId(String.valueOf(message.getChatId()))
                             .messageId(message.getMessageId())
-                            .replyMarkup(SecretaryMessageHandler.contactDecisionMarkup(
-                                    context.languages(),
-                                    new ContactDecision(parts[1], contactId, lang,
-                                            updatedStatus)))
+                            .replyMarkup(FederationWebLinks.keepLinks(SecretaryMessageHandler.contactDecisionMarkup(
+                                    context.languages(), new ContactDecision(parts[1], contactId, lang, updatedStatus)), message.getReplyMarkup()))
                             .build());
                 }
             }
