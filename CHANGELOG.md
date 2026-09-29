@@ -23,7 +23,8 @@ This is an ongoing update
 
 ## [1.0.8] - 2026-09-28
 
-This is an ongoing update
+This update introduces integration with [FederationWeb](https://github.com/nosial/FederationWeb) and improvments
+to the bot interface.
 
 ### Added
  - Added the optional `federation.web_application_endpoint` setting; when set, every message that displays a Federation
