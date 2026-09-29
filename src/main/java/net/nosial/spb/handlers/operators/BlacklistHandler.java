@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.operators;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.utilities.EntityPublisher;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.exceptions.ArgumentParseException;
@@ -144,7 +145,9 @@ public final class BlacklistHandler extends Handler
                     + lm.get(lang, "blacklist", "expires",
                     HtmlEscape.escape(MessageHelper.formatTimestamp(expires))) + "\n"
                     + lm.get(lang, "blacklist", "blacklist_id", HtmlEscape.escape(blacklistUuid));
-            sendHtml(context, message, html, true, null);
+            sendHtml(context, message, html, true, FederationWebLinks.attach(null,
+                    context.webLinks().button(lm, lang, FederationWebLinks.Record.BLACKLIST, blacklistUuid),
+                    context.webLinks().button(lm, lang, FederationWebLinks.Record.REPORT, reportUuid)));
         }
         catch (IllegalArgumentException e)
         {
