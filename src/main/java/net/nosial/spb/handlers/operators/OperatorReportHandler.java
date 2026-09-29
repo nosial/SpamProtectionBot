@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.operators;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.jfederation.enums.ClassificationFlag;
@@ -190,6 +191,7 @@ public final class OperatorReportHandler extends Handler
             html.append(context.languages().get(lang, "operator_report", "closed_classification",
                     classification.name()));
         }
-        replyHtml(context, "operator-report-closed", message, html.toString(), null);
+        replyHtml(context, "operator-report-closed", message, html.toString(), FederationWebLinks.attach(null,
+                context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.REPORT, reportUuid)));
     }
 }

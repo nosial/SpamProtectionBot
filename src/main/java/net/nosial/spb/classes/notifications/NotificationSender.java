@@ -1,5 +1,6 @@
 package net.nosial.spb.classes.notifications;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.NotificationAnchor;
 import net.nosial.spb.objects.NotificationTarget;
@@ -222,10 +223,13 @@ public final class NotificationSender
      * @param targetMessageId the original message id in the protected chat
      * @param targetAuthorId the original author id of the reported message
      * @param linkedChatNotification whether the linked chat/channel should also receive the notification
+     * @param reportLink the button opening the report in the Federation Web Application, kept on
+     *                   every copy after its moderation buttons are removed; {@code null} for none
      * @return the list of notification targets for tracking button removal
      */
-    public static List<NotificationTarget> notifyReportSubmitted(HandlerContext context, long protectedChatId, String reportHtml, long targetMessageId, long targetAuthorId, boolean linkedChatNotification)
+    public static List<NotificationTarget> notifyReportSubmitted(HandlerContext context, long protectedChatId, String reportHtml, long targetMessageId, long targetAuthorId, boolean linkedChatNotification, InlineKeyboardButton reportLink)
     {
+        InlineKeyboardMarkup linkMarkup = FederationWebLinks.attach(null, reportLink);
         ChatConfiguration configuration = resolveConfiguration(context, protectedChatId);
         List<AdminInfo> admins = context.chatAdmins().getIfPresent(protectedChatId);
         List<NotificationTarget> targets = new ArrayList<>();
@@ -246,19 +250,20 @@ public final class NotificationSender
                 AdminInfo adminInfo = findAdmin(admins, moderator);
                 InlineKeyboardMarkup markup = adminInfo != null
                         ? buildActionButtons(adminInfo, botInfo, protectedChatId, (int) targetMessageId, targetAuthorId) : null;
-                deliverReport(context, protectedChatId, moderator, reportHtml, markup, targetMessageId, targets);
+                deliverReport(context, protectedChatId, moderator, reportHtml, markup, linkMarkup, targetMessageId, targets);
             }
         }
 
         if (linkedChatNotification && configuration.channelLinkId() != null)
         {
-            deliverReport(context, protectedChatId, configuration.channelLinkId(), reportHtml, null, targetMessageId, targets);
+            deliverReport(context, protectedChatId, configuration.channelLinkId(), reportHtml, null, linkMarkup, targetMessageId, targets);
         }
         return targets;
     }
 
     /**
-     * Removes the inline action keyboard from all notification messages for a given report.
+     * Removes the inline action keyboard from all notification messages for a given report, leaving
+     * each copy with its retained keyboard, if any.
      *
      * @param context current update context
      * @param targets the notification targets to strip keyboards from
@@ -272,7 +277,8 @@ public final class NotificationSender
                 context.telegramClient().execute(EditMessageReplyMarkup.builder()
                         .chatId(String.valueOf(target.chatId()))
                         .messageId(target.messageId())
-                        .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
+                        .replyMarkup(target.retainedMarkup() != null ? target.retainedMarkup()
+                                : InlineKeyboardMarkup.builder().keyboard(List.of()).build())
                         .build());
             }
             catch (TelegramApiException e)
@@ -371,19 +377,21 @@ public final class NotificationSender
 
     /**
      * Forwards the reported message to one destination and replies to it with the report details,
-     * recording the delivered notification in {@code targets} when it carries buttons.
+     * recording the delivered notification in {@code targets} when it carries moderation buttons.
+     * The link keyboard follows the moderation buttons and is what remains once they are removed.
      */
     private static void deliverReport(HandlerContext context, long protectedChatId, long destination,
-                                      String reportHtml, InlineKeyboardMarkup markup, long targetMessageId,
-                                      List<NotificationTarget> targets)
+                                      String reportHtml, InlineKeyboardMarkup actionMarkup, InlineKeyboardMarkup linkMarkup,
+                                      long targetMessageId, List<NotificationTarget> targets)
     {
         Message forwarded = forward(context, protectedChatId, destination, (int) targetMessageId);
         Integer replyToId = forwarded != null ? forwarded.getMessageId() : null;
 
+        InlineKeyboardMarkup markup = FederationWebLinks.keepLinks(actionMarkup, linkMarkup);
         Message sent = send(context, destination, reportHtml, markup, null, replyToId);
-        if (sent != null && markup != null)
+        if (sent != null && actionMarkup != null)
         {
-            targets.add(new NotificationTarget(destination, sent.getMessageId()));
+            targets.add(new NotificationTarget(destination, sent.getMessageId(), linkMarkup));
         }
     }
 

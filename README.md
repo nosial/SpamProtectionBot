@@ -41,6 +41,7 @@ bot is designed to keep working, in a reduced form, even when no Federation serv
   * [Configuration](#configuration)
     * [Bot Configuration](#bot-configuration)
     * [Federation Configuration](#federation-configuration)
+      * [Federation Web Application](#federation-web-application)
     * [Federation Authentication](#federation-authentication)
   * [Setting Up the Bot in Telegram](#setting-up-the-bot-in-telegram)
     * [Group Protection](#group-protection)
@@ -205,10 +206,20 @@ The `federation` section is entirely optional. When it is absent, the bot starts
 every feature that depends on Federation — scanning, join protection, reporting, entity lookups — reports itself
 unavailable rather than failing.
 
-| Name                      | Type   | Default | Required                         | Description                                                             |
-|---------------------------|--------|---------|----------------------------------|-------------------------------------------------------------------------|
-| `federation.endpoint`     | string | —       | Yes, when the section is present | Base URL of the Federation server                                       |
-| `federation.access_token` | string | —       | No                               | Access token the bot authenticates with; omit it to connect anonymously |
+| Name                                  | Type   | Default | Required                         | Description                                                                                                             |
+|---------------------------------------|--------|---------|----------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `federation.endpoint`                 | string | —       | Yes, when the section is present | Base URL of the Federation server                                                                                       |
+| `federation.access_token`             | string | —       | No                               | Access token the bot authenticates with; omit it to connect anonymously                                                 |
+| `federation.web_application_endpoint` | string | —       | No                               | Base URL of a FederationWeb instance for the same server; see [Federation Web Application](#federation-web-application) |
+
+#### Federation Web Application
+
+When `federation.web_application_endpoint` is set, every message that displays a Federation record — `/info`,
+`/evidence`, `/report <uuid>`, `/blacklist`, report notifications and summaries, the operator `#REPORT_ASSIGNED`
+notification and its evidence, and the secretary contact page — carries a button opening that record's page
+(`/reports/…`, `/evidence/…`, `/entities/…` or `/blacklist/…`) in the web application. The button stays on a
+notification after its action buttons are used up. Telegram rejects a message whose button URL it cannot open, so the
+value must be a public `http` or `https` URL — a `localhost` or `127.0.0.1` address will cause those messages to fail.
 
 ### Federation Authentication
 

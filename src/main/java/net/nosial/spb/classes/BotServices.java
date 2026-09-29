@@ -54,6 +54,7 @@ public final class BotServices
     private final FederationService federation;
     private final TelegramConnection bot;
 
+    private final FederationWebLinks webLinks;
     private final LanguageManager languages;
     private final ManagerRegistry managers;
     private final SessionRegistry sessions;
@@ -86,6 +87,7 @@ public final class BotServices
             throw new IllegalStateException("the bot must authenticate before its services are assembled");
         }
 
+        this.webLinks = FederationWebLinks.from(configuration);
         this.languages = new LanguageManager(configuration.getDefaultLanguage());
         this.managers = new ManagerRegistry(database, configuration, this.languages);
         this.sessions = new SessionRegistry();
@@ -102,6 +104,16 @@ public final class BotServices
     public Configuration configuration()
     {
         return this.configuration;
+    }
+
+    /**
+     * Returns the links into the configured Federation Web Application.
+     *
+     * @return the web application links, disabled when none is configured
+     */
+    public FederationWebLinks webLinks()
+    {
+        return this.webLinks;
     }
 
     /**

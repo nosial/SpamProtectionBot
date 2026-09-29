@@ -46,6 +46,11 @@ buttons:
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
   unlink_chat: "Отвязать чат"
+  view_report: "Открыть жалобу"
+  view_evidence: "Открыть доказательство"
+  view_entity: "Открыть сущность"
+  view_blacklist: "Открыть запись чёрного списка"
+  view_operator: "Открыть оператора"
 
 start:
   channel_message: "Сообщение из канала"

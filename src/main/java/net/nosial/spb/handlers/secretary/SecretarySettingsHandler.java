@@ -1,4 +1,5 @@
 package net.nosial.spb.handlers.secretary;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.handlers.secretary.SecretaryMessageHandler.ContactDecision;
 import net.nosial.spb.utilities.EntityInfoRenderer;
 import net.nosial.spb.utilities.StartScreen;
@@ -255,11 +256,12 @@ public final class SecretarySettingsHandler extends Handler
         {
             html.append(lm.get(lang, "secretary_settings", "contact_not_known_hint"));
         }
-        EntityInfoRenderer.appendContactInfo(context, html, contactId, lang);
+        String entityUuid = EntityInfoRenderer.appendContactInfo(context, html, contactId, lang);
 
         InlineKeyboardMarkup markup = connectionId != null && !connectionId.isBlank()
                 ? SecretaryMessageHandler.contactSettingsDecisionMarkup(lm, connectionId, contactId, lang,
                 contact.map(SecretaryContact::status).orElse(SecretaryContactStatus.UNKNOWN)) : openSettingsMarkup(lm, lang);
+        markup = FederationWebLinks.attach(markup, context.webLinks().button(lm, lang, FederationWebLinks.Record.ENTITY, entityUuid));
         sendHtml(context, message, html.toString(), false, markup);
     }
 
@@ -430,8 +432,8 @@ public final class SecretarySettingsHandler extends Handler
                             .messageId(message.getMessageId())
                             .text(contactMenuHtml(context, updatedContact.get(), lang))
                             .parseMode(ParseMode.HTML)
-                            .replyMarkup(SecretaryMessageHandler.contactSettingsDecisionMarkup(
-                                    context.languages(), parts[1], contactId, lang, updatedStatus))
+                            .replyMarkup(FederationWebLinks.keepLinks(SecretaryMessageHandler.contactSettingsDecisionMarkup(
+                                    context.languages(), parts[1], contactId, lang, updatedStatus), message.getReplyMarkup()))
                             .build());
                 }
                 else

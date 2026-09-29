@@ -194,7 +194,8 @@ public final class ReportSubmissionService
                 String reportUuid = submission.getReport().uuid();
                 String html = notificationHtml(context.languages(), lang, context, session, reportUuid, reportMessage);
                 List<NotificationTarget> targets = NotificationSender.notifyReportSubmitted(context, session.chatId(),
-                                html, session.targetMessageId(), session.targetAuthorId(), true);
+                                html, session.targetMessageId(), session.targetAuthorId(), true,
+                                context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.REPORT, reportUuid));
                 if (!context.sessions().reportActions().track(session.chatId(), session.targetMessageId(), targets))
                 {
                     NotificationSender.removeActionButtons(context, targets);
@@ -434,7 +435,8 @@ public final class ReportSubmissionService
             html.append(lm.get(lang, "report_submit", "summary_comment", HtmlEscape.escape(reportMessage))).append('\n');
         }
         html.append(lm.get(lang, "report_submit", "summary_dismiss"));
-        sendOrEdit(context, session, html.toString(), dismissMarkup(lm, lang));
+        sendOrEdit(context, session, html.toString(), FederationWebLinks.attach(dismissMarkup(lm, lang),
+                context.webLinks().button(lm, lang, FederationWebLinks.Record.REPORT, reportUuid)));
     }
 
     /**

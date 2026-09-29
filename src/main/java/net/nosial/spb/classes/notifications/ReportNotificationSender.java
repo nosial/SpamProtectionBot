@@ -1,5 +1,6 @@
 package net.nosial.spb.classes.notifications;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.interfaces.NotificationSink;
 import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.classes.managers.ManagerRegistry;
@@ -42,6 +43,7 @@ final class ReportNotificationSender implements NotificationSink
     private final OkHttpTelegramClient telegramClient;
     private final FederationService federation;
     private final ManagerRegistry managers;
+    private final FederationWebLinks webLinks;
 
     /**
      * Constructs a ReportNotificationSender object for handling the sending of report notifications.
@@ -49,9 +51,11 @@ final class ReportNotificationSender implements NotificationSink
      * @param telegramClient the OkHttpTelegramClient instance used for sending messages via Telegram; must not be null.
      * @param federation the FederationService instance used for interacting with federated services; must not be null.
      * @param managers the ManagerRegistry instance used for accessing various manager components; must not be null.
+     * @param webLinks the links into the Federation Web Application attached to each message; must not be null.
      */
-    ReportNotificationSender(OkHttpTelegramClient telegramClient, FederationService federation, ManagerRegistry managers)
+    ReportNotificationSender(OkHttpTelegramClient telegramClient, FederationService federation, ManagerRegistry managers, FederationWebLinks webLinks)
     {
+        this.webLinks = Objects.requireNonNull(webLinks, "webLinks must not be null");
         this.telegramClient = Objects.requireNonNull(telegramClient, "telegramClient must not be null");
         this.federation = Objects.requireNonNull(federation, "federation must not be null");
         this.managers = Objects.requireNonNull(managers, "managers must not be null");
@@ -68,7 +72,8 @@ final class ReportNotificationSender implements NotificationSink
                 .chatId(String.valueOf(telegramUserId))
                 .text(detailsHtml(report, evidenceIds, lang))
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(actionMarkup(NotificationFormatter.languageManager(), lang, report.uuid()))
+                .replyMarkup(FederationWebLinks.attach(actionMarkup(NotificationFormatter.languageManager(), lang, report.uuid()),
+                        this.webLinks.button(NotificationFormatter.languageManager(), lang, FederationWebLinks.Record.REPORT, report.uuid())))
                 .build());
 
         sendEvidence(telegramUserId, notification, evidence, lang);
@@ -107,6 +112,8 @@ final class ReportNotificationSender implements NotificationSink
                         .chatId(String.valueOf(telegramUserId))
                         .text(EvidenceRenderer.infoHtml(NotificationFormatter.languageManager(), lang, record))
                         .parseMode(ParseMode.HTML)
+                        .replyMarkup(FederationWebLinks.attach(null, this.webLinks.button(
+                                NotificationFormatter.languageManager(), lang, FederationWebLinks.Record.EVIDENCE, record.uuid())))
                         .replyToMessageId(notification.getMessageId())
                         .build());
                 replyToId = info.getMessageId();

@@ -46,6 +46,11 @@ buttons:
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
   unlink_chat: "取消关联聊天"
+  view_report: "查看报告"
+  view_evidence: "查看证据"
+  view_entity: "查看实体"
+  view_blacklist: "查看黑名单记录"
+  view_operator: "查看操作员"
 
 start:
   channel_message: "频道消息"
