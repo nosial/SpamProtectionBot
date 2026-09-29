@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.nosial.spb.classes.Cache;
 import net.nosial.spb.classes.BotServices;
 import net.nosial.spb.classes.Configuration;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.Database;
 import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.classes.FederationService;
@@ -93,6 +94,16 @@ public record HandlerContext(Update update, BotServices services)
     public Configuration configuration()
     {
         return this.services.configuration();
+    }
+
+    /**
+     * Returns the links into the configured Federation Web Application.
+     *
+     * @return the web application links, disabled when none is configured
+     */
+    public FederationWebLinks webLinks()
+    {
+        return this.services.webLinks();
     }
 
     /**
