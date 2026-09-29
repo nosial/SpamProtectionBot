@@ -2,6 +2,7 @@ package net.nosial.spb.handlers.group;
 
 import net.nosial.spb.classes.UpdateDispatcher;
 import net.nosial.spb.classes.Handler;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.enums.DispatchMode;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
@@ -282,7 +283,7 @@ public final class ScanningHandler extends Handler
         // notification says what could not be done.
         sendScanningObservation(context, configuration, message,
                 new ScanningOutcome(contentSuggestion, entitySuggestion, deletedMessageIds, deleteContent, entityAction, entityActionApplied, textRestrictionApplied),
-                falsePositiveAttachments, anchors);
+                falsePositiveAttachments, anchors, entityQuery);
     }
 
     /**
@@ -742,9 +743,12 @@ public final class ScanningHandler extends Handler
      *                                 for reporting a false positive case.
      * @param anchors the destinations the message was forwarded to before it was acted on; the
      *                notification replies to each forwarded copy.
+     * @param entityQuery the author's entity query, linked from the notification; {@code null} when
+     *                    the author was not queried
      */
     private void sendScanningObservation(HandlerContext context, ChatConfiguration configuration, Message message, ScanningOutcome outcome,
-                                         List<ReportAttachment> falsePositiveAttachments, List<NotificationAnchor> anchors)
+                                         List<ReportAttachment> falsePositiveAttachments, List<NotificationAnchor> anchors,
+                                         EntityQueryResult entityQuery)
     {
         if (!configuration.scanningNotificationsEnabled())
         {
@@ -763,6 +767,7 @@ public final class ScanningHandler extends Handler
             FalsePositiveReportContext falsePositive = context.sessions().falsePositive().create(message, text, falsePositiveAttachments);
             markup = falsePositiveMarkup(context.languages(), lang, falsePositive);
         }
+        markup = FederationWebLinks.attach(markup, context.webLinks().entityButton(context.languages(), lang, entityQuery));
 
         NotificationSender.notifyAnchored(context, anchors,
                 scanningNotificationHtml(context.languages(), lang, configuration, message, outcome), markup);
