@@ -14,6 +14,11 @@ This is an ongoing update
 
 This is an ongoing update
 
+### Added
+ - Added the optional `federation.web_application_endpoint` setting; when set, every message that displays a Federation
+   report, evidence, entity or blacklist record carries a button opening it in the Federation Web Application, and the
+   button is kept when a notification's action buttons are removed
+
 ### Changed
  - Passive chats are no longer notified when Federation only suggests treating a message or its author with caution;
    Moderate and Strict delete a cautioned message that contains media or links and send a notification, and leave a
