@@ -6,6 +6,7 @@ import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.jfederation.enums.SuggestedAction;
 import net.nosial.spb.classes.FederationService;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.exceptions.FederationException;
 import net.nosial.jfederation.records.EntityQueryResult;
 import net.nosial.spb.classes.notifications.NotificationFormatter;
@@ -128,7 +129,8 @@ public final class JoinProtectionHandler extends Handler
             Language lang = context.managers().languagePreferences()
                     .getChatLanguage(chat.getId());
             NotificationSender.notify(context, chat.getId(), notificationHtml(context.languages(), lang,
-                    chat, member, query, action, actionApplied));
+                    chat, member, query, action, actionApplied),
+                    FederationWebLinks.attach(null, context.webLinks().entityButton(context.languages(), lang, query)));
         }
     }
 
@@ -202,7 +204,8 @@ public final class JoinProtectionHandler extends Handler
                     .getChatLanguage(chat.getId());
             NotificationSender.notify(context, chat.getId(),
                     joinRequestNotificationHtml(context.languages(), lang, chat, user, query, action,
-                            declined, requestHandled));
+                            declined, requestHandled),
+                    FederationWebLinks.attach(null, context.webLinks().entityButton(context.languages(), lang, query)));
         }
     }
 
