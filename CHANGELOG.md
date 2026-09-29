@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is an ongoing update
 
+### Added
+ - Scanning, Join Protection and Secretary Mode notifications now carry a button opening the member's or contact's
+   entity in the Federation Web Application, and `/link` replies with buttons for both the entity and its target
+ - Reporting a false positive now adds a button opening the submitted report to the notification
+
+### Changed
+ - The `#REPORT_ASSIGNED` buttons are now labelled Just Close, Normal, Suspicious and Malicious
+ - Pressing a `#REPORT_ASSIGNED` button now checks the report first; a report that was already closed elsewhere, or no
+   longer exists, has its buttons removed with an alert saying so instead of sending a close request the server would
+   reject
+
 
 ## [1.0.8] - 2026-09-28
 
