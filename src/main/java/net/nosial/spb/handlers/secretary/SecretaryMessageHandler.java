@@ -3,7 +3,9 @@ package net.nosial.spb.handlers.secretary;
 import net.nosial.spb.classes.interfaces.EchoCall;
 import net.nosial.jfederation.enums.SuggestedAction;
 import net.nosial.jfederation.records.EntityQueryResult;
+import net.nosial.jfederation.records.ResolvedEntity;
 import net.nosial.jfederation.records.ScannedContent;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.Handler;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.classes.LanguageManager;
@@ -201,7 +203,7 @@ public final class SecretaryMessageHandler extends Handler
                     releaseContactClaim(context, connectionId, sender.getId());
                     return;
                 }
-                notifyAllowedOwner(context, ownerId, message);
+                notifyAllowedOwner(context, ownerId, message, recommendation.entityUuid());
             }
             else
             {
@@ -211,7 +213,8 @@ public final class SecretaryMessageHandler extends Handler
                     releaseContactClaim(context, connectionId, sender.getId());
                     return;
                 }
-                notifyOwner(context, ownerId, message, recommendation.suggestion(), deleted, SecretaryContactStatus.DENIED);
+                notifyOwner(context, ownerId, message, recommendation.suggestion(), deleted, SecretaryContactStatus.DENIED,
+                        recommendation.entityUuid());
             }
             return;
         }
@@ -226,11 +229,12 @@ public final class SecretaryMessageHandler extends Handler
         }
         if (allowed)
         {
-            notifyAllowedOwner(context, ownerId, message);
+            notifyAllowedOwner(context, ownerId, message, recommendation.entityUuid());
         }
         else
         {
-            notifyOwner(context, ownerId, message, recommendation.suggestion(), false, SecretaryContactStatus.ALLOWED);
+            notifyOwner(context, ownerId, message, recommendation.suggestion(), false, SecretaryContactStatus.ALLOWED,
+                    recommendation.entityUuid());
         }
     }
 
@@ -262,6 +266,7 @@ public final class SecretaryMessageHandler extends Handler
         boolean entityAnalyzed = false;
         SuggestedAction contentSuggestion = null;
         SuggestedAction entitySuggestion = null;
+        String entityUuid = null;
 
         if (hasText)
         {
@@ -270,6 +275,11 @@ public final class SecretaryMessageHandler extends Handler
                 ScannedContent scannedContent = federation.scanContent(MessageContent.buildScanInput(message, false), authorEntity);
                 contentAnalyzed = true;
                 contentSuggestion = scannedContent.suggestedAction();
+                ResolvedEntity author = scannedContent.getAuthorEntity();
+                if (author != null && author.getEntity() != null)
+                {
+                    entityUuid = author.getEntity().uuid();
+                }
             }
             catch (FederationException e)
             {
@@ -286,6 +296,10 @@ public final class SecretaryMessageHandler extends Handler
                 {
                     entityAnalyzed = true;
                     entitySuggestion = query.suggestedAction();
+                    if (query.entityRecord() != null)
+                    {
+                        entityUuid = query.entityRecord().uuid();
+                    }
                 }
             }
             catch (FederationException e)
@@ -298,7 +312,7 @@ public final class SecretaryMessageHandler extends Handler
             return Recommendation.UNKNOWN;
         }
         SuggestedAction suggestion = moreSevere(contentSuggestion, entitySuggestion);
-        return suggestion == null ? Recommendation.CLEAN : new Recommendation(suggestion);
+        return new Recommendation(true, suggestion, entityUuid);
     }
 
     /**
@@ -356,8 +370,9 @@ public final class SecretaryMessageHandler extends Handler
      * @param context the handler context containing services and configurations
      * @param ownerId the unique identifier of the owner to notify
      * @param message the business message related to the allowed contact
+     * @param entityUuid the contact's Federation entity, linked from the notification; {@code null} for none
      */
-    private static void notifyAllowedOwner(HandlerContext context, long ownerId, Message message)
+    private static void notifyAllowedOwner(HandlerContext context, long ownerId, Message message, String entityUuid)
     {
         if (context.telegramClient() == null)
         {
@@ -369,9 +384,10 @@ public final class SecretaryMessageHandler extends Handler
                 .chatId(String.valueOf(ownerId))
                 .text(html)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(contactDecisionMarkup(context.languages(),
+                .replyMarkup(FederationWebLinks.attach(contactDecisionMarkup(context.languages(),
                         new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang,
-                                SecretaryContactStatus.ALLOWED)))
+                                SecretaryContactStatus.ALLOWED)),
+                        context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.ENTITY, entityUuid)))
                 .build());
     }
 
@@ -407,8 +423,9 @@ public final class SecretaryMessageHandler extends Handler
      * @param suggestion The suggested action (e.g., allow, deny) based on the content review.
      * @param deleted A flag indicating whether the referenced message has been deleted.
      * @param contactStatus The status of the contact associated with the message (e.g., unknown, allowed, denied).
+     * @param entityUuid The contact's Federation entity, linked from the notification; {@code null} for none.
      */
-    private static void notifyOwner(HandlerContext context, long ownerId, Message message, SuggestedAction suggestion, boolean deleted, SecretaryContactStatus contactStatus)
+    private static void notifyOwner(HandlerContext context, long ownerId, Message message, SuggestedAction suggestion, boolean deleted, SecretaryContactStatus contactStatus, String entityUuid)
     {
         if (context.telegramClient() == null)
         {
@@ -421,8 +438,9 @@ public final class SecretaryMessageHandler extends Handler
                 .chatId(String.valueOf(ownerId))
                 .text(html)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(contactDecisionMarkup(context.languages(),
-                        new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang, contactStatus)));
+                .replyMarkup(FederationWebLinks.attach(contactDecisionMarkup(context.languages(),
+                        new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang, contactStatus)),
+                        context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.ENTITY, entityUuid)));
         if (evidenceId != null)
         {
             builder.replyToMessageId(evidenceId);
@@ -1027,25 +1045,15 @@ public final class SecretaryMessageHandler extends Handler
 
     /**
      * Compares the given suggestions and reports on whether the message is actionable.
+     *
+     * @param analyzed whether Federation analyzed the message or its sender at all
+     * @param suggestion the most severe suggested action, or {@code null} when there is no reason to act
+     * @param entityUuid the sender's Federation entity, or {@code null} when it was not resolved
      */
-    record Recommendation(boolean analyzed, SuggestedAction suggestion)
+    record Recommendation(boolean analyzed, SuggestedAction suggestion, String entityUuid)
     {
         /** Federation was not asked, so nothing is known either way. */
-        public static final Recommendation UNKNOWN = new Recommendation(false, null);
-
-        /** Federation looked and found no reason to act. */
-        public static final Recommendation CLEAN = new Recommendation(true, null);
-
-        /**
-         * Records what Federation suggested doing about a message and its sender.
-         *
-         * @param suggestion the suggested action, which must not be null; use {@link #CLEAN} when
-         *                   Federation had nothing to suggest
-         */
-        public Recommendation(SuggestedAction suggestion)
-        {
-            this(true, Objects.requireNonNull(suggestion, "suggestion must not be null"));
-        }
+        public static final Recommendation UNKNOWN = new Recommendation(false, null, null);
     }
 
     /**
