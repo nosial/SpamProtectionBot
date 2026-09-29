@@ -430,6 +430,24 @@ class ConfigurationTest
         }
 
         @Test
+        @DisplayName("a web application endpoint without an http(s) scheme is rejected")
+        void rejectsSchemelessWebApplicationEndpoint() throws IOException
+        {
+            // Telegram refuses a message whose button URL it cannot open, so accepting this would
+            // silently break every message that displays a Federation record.
+            ConfigurationException e = loadFailure("""
+                    bot:
+                      name: SpamProtectionBot
+                      api_key: "123456:ABCDEF"
+                    federation:
+                      endpoint: "https://federation.example.com/"
+                      web_application_endpoint: "federation.example.com"
+                    """);
+
+            assertTrue(e.getMessage().contains("web_application_endpoint"), e.getMessage());
+        }
+
+        @Test
         @DisplayName("an out-of-range api port is rejected")
         void rejectsOutOfRangePort() throws IOException
         {
