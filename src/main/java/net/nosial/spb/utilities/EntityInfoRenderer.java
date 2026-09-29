@@ -39,8 +39,9 @@ public final class EntityInfoRenderer
      * @param html the destination HTML builder
      * @param contactId the Telegram user id of the contact
      * @param lang the owner's language
+     * @return the contact's entity UUID, or {@code null} when Federation has no record of them
      */
-    public static void appendContactInfo(HandlerContext context, StringBuilder html, long contactId, Language lang)
+    public static String appendContactInfo(HandlerContext context, StringBuilder html, long contactId, Language lang)
     {
         LanguageManager lm = context.languages();
         html.append(lm.get(lang, "info", "header"));
@@ -50,14 +51,14 @@ public final class EntityInfoRenderer
         if (!context.federation().isAvailable())
         {
             html.append(lm.get(lang, "info", "unavailable_no_federation"));
-            return;
+            return null;
         }
 
         EntityRecord entity = fetchEntity(context, address);
         if (entity == null)
         {
             html.append(lm.get(lang, "info", "entity_not_found", HtmlEscape.escape(address)));
-            return;
+            return null;
         }
 
         appendEntityFields(html, context, entity, false, lang);
@@ -90,6 +91,7 @@ public final class EntityInfoRenderer
         appendEntityQuery(html, fetchEntityQuery(context, address), lm, lang);
         appendBlacklists(context, html, entity.uuid(), lm, lang);
         appendReports(context, html, entity.uuid(), lm, lang);
+        return entity.uuid();
     }
 
 /**
