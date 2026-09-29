@@ -46,6 +46,11 @@ buttons:
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
   unlink_chat: "Unlink Chat"
+  view_report: "View Report"
+  view_evidence: "View Evidence"
+  view_entity: "View Entity"
+  view_blacklist: "View Blacklist Record"
+  view_operator: "View Operator"
 
 start:
   channel_message: "Channel Message"
