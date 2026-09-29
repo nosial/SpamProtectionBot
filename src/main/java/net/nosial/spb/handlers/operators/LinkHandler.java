@@ -4,6 +4,7 @@ import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.spb.exceptions.FederationException;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.Handler;
 import net.nosial.spb.objects.Language;
 import net.nosial.spb.objects.context.HandlerContext;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChat;
 import org.telegram.telegrambots.meta.api.objects.chat.ChatFullInfo;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.Optional;
@@ -111,8 +113,14 @@ public final class LinkHandler extends Handler
 
             context.federation().linkEntities(identityOpt.get().accessToken(), entityUuid, targetUuid,
                     relationshipType);
+            FederationWebLinks links = context.webLinks();
+            String targetUrl = links.url(FederationWebLinks.Record.ENTITY, targetUuid);
             sendHtml(context, message, context.languages().get(lang, "link", "linked",
-                    HtmlEscape.escape(entityInput), HtmlEscape.escape(targetInput), typeValue.toLowerCase()), false, null);
+                    HtmlEscape.escape(entityInput), HtmlEscape.escape(targetInput), typeValue.toLowerCase()), false,
+                    FederationWebLinks.attach(null,
+                            links.button(context.languages(), lang, FederationWebLinks.Record.ENTITY, entityUuid),
+                            targetUrl == null ? null : InlineKeyboardButton.builder()
+                                    .text(context.languages().get(lang, "buttons", "view_target")).url(targetUrl).build()));
         }
         catch (FederationException e)
         {
