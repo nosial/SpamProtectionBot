@@ -285,10 +285,10 @@ report_notification:
   evidence: "<b>证据：</b>\n"
   evidence_entry: "• <code>{0}</code>"
   footer: "\n请选择一个操作以关闭此举报。"
-  close: "关闭"
-  close_normal: "关闭：正常"
-  close_suspicious: "关闭：可疑"
-  close_malicious: "关闭：恶意"
+  close: "仅关闭"
+  close_normal: "正常"
+  close_suspicious: "可疑"
+  close_malicious: "恶意"
 
 report:
   regular_group_note: "\n\n<i>回复了某条消息？在普通群组中，Telegram 不会向我显示对我加入之前所发消息的回复。请回复一条较新的消息，或将群组升级为超级群组。</i>"
@@ -356,6 +356,9 @@ operator_report:
   closed_classification: "\n<b>分类：</b> {0}"
   expired_alert: "举报操作已过期\n\n此操作不再可用。"
   not_operator: "您已不再以操作员身份认证。请使用 /auth 重新登录。"
+  already_closed: "此报告已被关闭。"
+  not_found: "联邦服务器上已不存在此报告。"
+  lookup_failed: "无法检查报告状态，请重试。"
 
 blacklist:
   regular_group_note: "\n\n<i>回复了某条消息？在普通群组中，Telegram 不会向我显示对我加入之前所发消息的回复。请回复一条较新的消息，或将群组升级为超级群组。</i>"

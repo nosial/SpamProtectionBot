@@ -285,10 +285,10 @@ report_notification:
   evidence: "<b>Evidence:</b>\n"
   evidence_entry: "• <code>{0}</code>"
   footer: "\nChoose an action to close this report."
-  close: "Close"
-  close_normal: "Close: Normal"
-  close_suspicious: "Close: Suspicious"
-  close_malicious: "Close: Malicious"
+  close: "Just Close"
+  close_normal: "Normal"
+  close_suspicious: "Suspicious"
+  close_malicious: "Malicious"
 
 report:
   regular_group_note: "\n\n<i>Replied to a message? In regular groups, Telegram does not show me replies to messages sent before I joined. Reply to a newer message, or upgrade the group to a supergroup.</i>"
@@ -356,6 +356,9 @@ operator_report:
   closed_classification: "\n<b>Classification:</b> {0}"
   expired_alert: "Report Action Expired\n\nThis action is no longer available."
   not_operator: "You are no longer authenticated as an operator. Use /auth to sign in again."
+  already_closed: "This report has already been closed."
+  not_found: "This report no longer exists on the Federation server."
+  lookup_failed: "Could not check the report's status. Please try again."
 
 blacklist:
   regular_group_note: "\n\n<i>Replied to a message? In regular groups, Telegram does not show me replies to messages sent before I joined. Reply to a newer message, or upgrade the group to a supergroup.</i>"

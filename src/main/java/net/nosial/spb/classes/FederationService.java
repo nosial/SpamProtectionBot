@@ -409,6 +409,36 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
+     * Returns a report by its UUID as seen by an operator, who may see reports the bot's own
+     * client cannot.
+     *
+     * @param accessToken the operator's access token
+     * @param uuid the report UUID
+     * @return the report, or {@link Optional#empty()} when nothing matches
+     * @throws FederationException If the server is unavailable or rejected the call
+     */
+    public Optional<ReportRecord> report(String accessToken, String uuid) throws FederationException
+    {
+        requireAvailable();
+        Objects.requireNonNull(accessToken, "accessToken must not be null");
+
+        if (uuid == null || uuid.isBlank())
+        {
+            return Optional.empty();
+        }
+
+        String what = "look up report " + uuid;
+        try (FederationClient operator = new FederationClient(this.endpoint, accessToken))
+        {
+            return optional(what, () -> operator.getReport(uuid));
+        }
+        catch (IllegalArgumentException | IllegalStateException e)
+        {
+            throw new FederationException("Failed to " + what + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Returns the reports filed against an entity.
      *
      * @param entity the entity address or UUID

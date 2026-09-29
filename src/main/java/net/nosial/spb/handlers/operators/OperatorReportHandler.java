@@ -4,6 +4,7 @@ import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.jfederation.enums.ClassificationFlag;
+import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.spb.exceptions.FederationException;
 import net.nosial.spb.classes.Handler;
 import net.nosial.spb.classes.notifications.OperatorReportCallback;
@@ -32,7 +33,9 @@ import java.util.regex.Pattern;
  *
  * <p>The notification text is never rewritten, so the report UUID and details stay available to
  * the operator: a successful close removes the buttons and posts the result as a reply, and a
- * failure is only reported in an alert, leaving the buttons in place for another attempt.
+ * failure is only reported in an alert, leaving the buttons in place for another attempt. The
+ * report is looked up before it is closed; one that is already closed or no longer exists only
+ * has its buttons removed, since the server would reject closing it.
  */
 @UpdateHandler(value = UpdateType.CALLBACK_QUERY, callbackData = {OperatorReportCallback.PREFIX + ":", OperatorReportCallback.LEGACY_PREFIX + ":"})
 public final class OperatorReportHandler extends Handler
@@ -117,6 +120,28 @@ public final class OperatorReportHandler extends Handler
         if (!claim.compareAndSet(false, true))
         {
             answer(context, callback);
+            return;
+        }
+
+        // The report may have been closed elsewhere (another operator, the web application), and
+        // closing it again would only be rejected, so its current state is checked first.
+        ReportRecord report;
+        try
+        {
+            report = context.federation().report(operator.accessToken(), reportUuid).orElse(null);
+        }
+        catch (FederationException e)
+        {
+            LOGGER.warn("Failed to look up report {} for Telegram operator {}: {}", reportUuid, callback.getFrom().getId(), e.getMessage());
+            context.cache().remove(claimKey);
+            answerAlert(context, callback, context.languages().get(lang, "operator_report", "lookup_failed"));
+            return;
+        }
+
+        if (report == null || !report.opened())
+        {
+            removeInlineKeyboard(context, message);
+            answerAlert(context, callback, context.languages().get(lang, "operator_report", report == null ? "not_found" : "already_closed"));
             return;
         }
 

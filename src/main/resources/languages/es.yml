@@ -285,10 +285,10 @@ report_notification:
   evidence: "<b>Evidencia:</b>\n"
   evidence_entry: "• <code>{0}</code>"
   footer: "\nElija una acción para cerrar este reporte."
-  close: "Cerrar"
-  close_normal: "Cerrar: Normal"
-  close_suspicious: "Cerrar: Sospechoso"
-  close_malicious: "Cerrar: Malicioso"
+  close: "Solo cerrar"
+  close_normal: "Normal"
+  close_suspicious: "Sospechoso"
+  close_malicious: "Malicioso"
 
 report:
   regular_group_note: "\n\n<i>¿Respondiste a un mensaje? En los grupos normales, Telegram no me muestra las respuestas a mensajes enviados antes de que me uniera. Responde a un mensaje más reciente o convierte el grupo en un supergrupo.</i>"
@@ -356,6 +356,9 @@ operator_report:
   closed_classification: "\n<b>Clasificación:</b> {0}"
   expired_alert: "Acción de reporte expirada\n\nEsta acción ya no está disponible."
   not_operator: "Ya no está autenticado como operador. Use /auth para iniciar sesión de nuevo."
+  already_closed: "Este reporte ya ha sido cerrado."
+  not_found: "Este reporte ya no existe en el servidor de la Federación."
+  lookup_failed: "No se pudo comprobar el estado del reporte. Inténtelo de nuevo."
 
 blacklist:
   regular_group_note: "\n\n<i>¿Respondiste a un mensaje? En los grupos normales, Telegram no me muestra las respuestas a mensajes enviados antes de que me uniera. Responde a un mensaje más reciente o convierte el grupo en un supergrupo.</i>"
