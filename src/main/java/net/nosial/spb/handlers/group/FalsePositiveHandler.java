@@ -1,5 +1,6 @@
 package net.nosial.spb.handlers.group;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.Handler;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.classes.ReportSubmissionService;
@@ -19,8 +20,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import net.nosial.jfederation.enums.IncidentType;
 import org.telegram.telegrambots.meta.api.objects.message.MaybeInaccessibleMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import java.util.List;
 
 /**
  * Handles the Report False Positive button on a scanning notification.
@@ -124,7 +123,8 @@ public final class FalsePositiveHandler extends Handler
 
     /**
      * Updates the scanning notification that carried the "Report False Positive" button so it
-     * records the submitted report's identifier and clears the action button.
+     * records the submitted report's identifier, replacing the action button with a link to the
+     * report while keeping the notification's existing links.
      *
      * @param context the per-update command context
      * @param callback the callback query whose message carries the notification
@@ -138,7 +138,8 @@ public final class FalsePositiveHandler extends Handler
         {
             return;
         }
-        String original = (notification instanceof Message message) ? message.getText() : null;
+        Message previous = notification instanceof Message message ? message : null;
+        String original = previous != null ? previous.getText() : null;
         String reportInfo = context.languages().get(lang, "false_positive", "submitted_block", reportUuid);
         String newText = (original == null || original.isBlank() ? "" : original + "\n\n") + reportInfo;
         try
@@ -148,7 +149,9 @@ public final class FalsePositiveHandler extends Handler
                     .messageId(notification.getMessageId())
                     .text(newText)
                     .parseMode(ParseMode.HTML)
-                    .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
+                    .replyMarkup(FederationWebLinks.attach(
+                            FederationWebLinks.linksOnly(previous != null ? previous.getReplyMarkup() : null),
+                            context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.REPORT, reportUuid)))
                     .build());
         }
         catch (TelegramApiException e)
