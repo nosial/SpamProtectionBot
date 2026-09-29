@@ -1,5 +1,8 @@
 package net.nosial.spb.handlers.federation;
 
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import net.nosial.spb.objects.Language;
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
 import net.nosial.spb.exceptions.FederationException;
@@ -84,15 +87,18 @@ public final class EvidenceHandler extends Handler
                 return;
             }
 
-            String html = EvidenceRenderer.infoHtml(context.languages(), resolveLanguage(context, message), evidence);
+            Language lang = resolveLanguage(context, message);
+            String html = EvidenceRenderer.infoHtml(context.languages(), lang, evidence);
+            InlineKeyboardMarkup markup = FederationWebLinks.attach(null,
+                    context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.EVIDENCE, evidence.uuid()));
             Message infoMessage;
             if (isGroupChat(message))
             {
-                infoMessage = sendEphemeralHtmlAndReturn(context, message, html);
+                infoMessage = sendEphemeralHtmlAndReturn(context, message, html, markup);
             }
             else
             {
-                infoMessage = replyHtml(context, "evidence-reply", message, html, null);
+                infoMessage = replyHtml(context, "evidence-reply", message, html, markup);
             }
 
             // The info message is ephemeral in groups, so attachments cannot reply to it there.
@@ -112,10 +118,11 @@ public final class EvidenceHandler extends Handler
      * @param context the per-update command context
      * @param message the incoming message to reply to
      * @param html the HTML content to send as the message text
+     * @param markup the inline keyboard to attach, or {@code null} for none
      * @return the sent {@link Message} instance
      * @throws TelegramApiException if an error occurs while sending the message
      */
-    private static Message sendEphemeralHtmlAndReturn(HandlerContext context, Message message, String html) throws TelegramApiException
+    private static Message sendEphemeralHtmlAndReturn(HandlerContext context, Message message, String html, InlineKeyboardMarkup markup) throws TelegramApiException
     {
         return execute(context, "evidence-ephemeral", SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
@@ -124,6 +131,7 @@ public final class EvidenceHandler extends Handler
                 .messageThreadId(MessageHelper.topicId(message))
                 .text(html)
                 .parseMode(ParseMode.HTML)
+                .replyMarkup(markup)
                 .build());
     }
 }
