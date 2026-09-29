@@ -65,3 +65,9 @@ federation:
   # Access token for API authentication (optional; anonymous access when omitted). A token that
   # does not carry client permissions on the server is treated the same as no token at all.
   access_token: "replace-with-your-own-access-token"
+
+  # Base URL of a Federation Web Application (FederationWeb) instance serving the same Federation
+  # server (optional). When set, messages that display a report, evidence, entity or blacklist
+  # record carry a button opening it in the web application. Must be a public http(s) URL, since
+  # Telegram rejects messages whose button URL points at localhost or a private address.
+  web_application_endpoint: "https://federation.example.com/"
