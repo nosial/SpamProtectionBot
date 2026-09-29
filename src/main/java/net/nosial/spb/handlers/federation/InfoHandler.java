@@ -1,6 +1,7 @@
 package net.nosial.spb.handlers.federation;
 
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.exceptions.ArgumentParseException;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.classes.UpdateHandler;
@@ -384,7 +385,8 @@ public final class InfoHandler extends Handler
         EntityInfoRenderer.appendBlacklists(context, html, entity.uuid(), lm, lang);
         EntityInfoRenderer.appendReports(context, html, entity.uuid(), lm, lang);
 
-        sendHtml(context, message, html.toString(), false, null);
+        sendHtml(context, message, html.toString(), false, FederationWebLinks.attach(null,
+                context.webLinks().button(lm, lang, FederationWebLinks.Record.ENTITY, entity.uuid())));
     }
 
     /**
