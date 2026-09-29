@@ -1,5 +1,6 @@
 package net.nosial.spb.classes;
 
+import net.nosial.jfederation.records.EntityQueryResult;
 import net.nosial.spb.objects.Language;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -124,6 +125,20 @@ public final class FederationWebLinks
             case OPERATOR -> lm.get(lang, "buttons", "view_operator");
         };
         return InlineKeyboardButton.builder().text(label).url(url).build();
+    }
+
+    /**
+     * Returns a button opening the entity an entity query resolved to.
+     *
+     * @param lm the translations
+     * @param lang the language of the message the button is attached to
+     * @param query the entity query, or {@code null} when the entity was not queried
+     * @return the button, or {@code null} when links are disabled or the query resolved no entity
+     */
+    public InlineKeyboardButton entityButton(LanguageManager lm, Language lang, EntityQueryResult query)
+    {
+        return query == null || query.entityRecord() == null ? null
+                : button(lm, lang, Record.ENTITY, query.entityRecord().uuid());
     }
 
     /**
