@@ -1,5 +1,6 @@
 package net.nosial.spb.classes.notifications;
 
+import net.nosial.spb.classes.FederationWebLinks;
 import net.nosial.spb.classes.interfaces.ReportSource;
 import net.nosial.spb.classes.interfaces.NotificationSink;
 import net.nosial.spb.classes.FederationService;
@@ -59,12 +60,13 @@ public final class NotificationService implements AutoCloseable
      * @param managers source of authenticated operator identities and language preferences
      * @param telegramClient client used to deliver private Telegram messages
      * @param federation the Federation server the reports are polled from
+     * @param webLinks links into the Federation Web Application attached to each notification
      * @param interval time between completed poll cycles
      */
-    public NotificationService(ManagerRegistry managers, OkHttpTelegramClient telegramClient, FederationService federation, Duration interval)
+    public NotificationService(ManagerRegistry managers, OkHttpTelegramClient telegramClient, FederationService federation, FederationWebLinks webLinks, Duration interval)
     {
         this(managers, interval, identity -> loadOpenedReports(federation, identity),
-                new ReportNotificationSender(telegramClient, federation, managers));
+                new ReportNotificationSender(telegramClient, federation, managers, webLinks));
         Objects.requireNonNull(telegramClient, "telegramClient must not be null");
         Objects.requireNonNull(federation, "federation must not be null");
     }
