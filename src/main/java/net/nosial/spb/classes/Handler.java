@@ -881,10 +881,12 @@ public abstract class Handler
     }
 
     /**
-     * Removes the inline keyboard from a message on a best-effort basis, leaving its text intact.
+     * Removes the action buttons from a message on a best-effort basis, leaving its text and any
+     * link buttons intact.
      *
      * <p>Used when a notification's buttons can no longer be acted on, so the information the
-     * notification carries stays available to the reader.
+     * notification carries, and its link to the Federation Web Application, stay available to the
+     * reader.
      *
      * @param context the per-update command context
      * @param message the message whose buttons to remove
@@ -894,7 +896,7 @@ public abstract class Handler
         tryExecute(context, "remove-inline-keyboard", EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .messageId(message.getMessageId())
-                .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of()).build())
+                .replyMarkup(FederationWebLinks.linksOnly(message.getReplyMarkup()))
                 .build());
     }
 
