@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.8] - 2026-09-28
 
-This is an ongoing update
+This update introduces integration with [FederationWeb](https://github.com/nosial/FederationWeb) and improvments
+to the bot interface.
 
 ### Changed
  - Passive chats are no longer notified when Federation only suggests treating a message or its author with caution;
