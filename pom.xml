@@ -18,14 +18,15 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependency versions -->
-        <jfederation.version>1.0.8</jfederation.version>
-        <telegrambots.version>10.2.0</telegrambots.version>
+        <jfederation.version>1.0.9</jfederation.version>
+        <telegrambots.version>10.3.0</telegrambots.version>
         <snakeyaml.version>2.0</snakeyaml.version>
-        <slf4j.version>2.0.15</slf4j.version>
-        <logback.version>1.5.34</logback.version>
+        <slf4j.version>2.0.20</slf4j.version>
+        <logback.version>1.6.4</logback.version>
         <sqlite.version>3.53.4.0</sqlite.version>
         <hikaricp.version>7.1.0</hikaricp.version>
-        <caffeine.version>3.2.4</caffeine.version>
+        <caffeine.version>3.3.0</caffeine.version>
+        <jackson3.version>3.2.3</jackson3.version>
     </properties>
 
     <repositories>
@@ -40,6 +41,11 @@
             <groupId>com.github.nosial</groupId>
             <artifactId>JFederation</artifactId>
             <version>${jfederation.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson3.version}</version>
         </dependency>
         <dependency>
             <groupId>org.telegram</groupId>
