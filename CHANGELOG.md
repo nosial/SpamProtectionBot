@@ -15,6 +15,9 @@ This is a regular update, following version `v1.0-R3` of the OFD Specification.
    illegal content, and `/report illegal` (or a forwarded report of that type) replies that the server does not
    accept it instead of failing with a generic error
 
+### Removed
+- Removed the Report False Positive button from scanning notifications; the Federation server already generates
+  reports for high-risk content it scans, so the button only filed a duplicate report
 
 
 ## [1.0.9] - 2026-09-29
