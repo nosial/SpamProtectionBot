@@ -5,9 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.10] - Ongoing
+## [1.0.10] - 2026-10-01
 
-This is an ongoing update
+This is an ongoing update, following version `v1.0-R3` of the OFD Specification.
+
+### Changed
+ - Updated all required dependencies to the latest compatible version
+ - The report dialog no longer offers the Illegal Content incident type when the Federation server does not accept
+   illegal content, and `/report illegal` (or a forwarded report of that type) replies that the server does not
+   accept it instead of failing with a generic error
 
 
 
