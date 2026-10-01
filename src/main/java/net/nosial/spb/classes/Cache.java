@@ -219,6 +219,8 @@ public final class Cache<K, V>
      */
     public static final class LoadFailedException extends RuntimeException
     {
+        private static final long serialVersionUID = 1L;
+
         /**
          * Creates a new load failure.
          *
