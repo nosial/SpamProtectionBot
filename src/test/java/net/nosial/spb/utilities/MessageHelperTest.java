@@ -3,11 +3,13 @@ package net.nosial.spb.utilities;
 import net.nosial.spb.support.Updates;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -88,5 +90,33 @@ class MessageHelperTest
     void unthreadedMessageHasNoTopic()
     {
         assertNull(MessageHelper.topicId(replyTo50("")));
+    }
+
+    @Test
+    @DisplayName("a message with no ephemeral receiver is sent as a regular message and passes validation")
+    void noReceiverIsARegularMessage()
+    {
+        SendMessage message = SendMessage.builder()
+                .chatId("-1001234567890")
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(null))
+                .text("hello")
+                .build();
+
+        assertNull(message.getEphemeralMessageParameters());
+        assertDoesNotThrow(message::validate);
+    }
+
+    @Test
+    @DisplayName("a message with an ephemeral receiver is addressed to that user")
+    void receiverMakesTheMessageEphemeral()
+    {
+        SendMessage message = SendMessage.builder()
+                .chatId("-1001234567890")
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(42L))
+                .text("hello")
+                .build();
+
+        assertEquals(42L, message.getEphemeralMessageParameters().getReceiverUserId());
+        assertDoesNotThrow(message::validate);
     }
 }
