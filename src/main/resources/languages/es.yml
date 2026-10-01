@@ -41,7 +41,6 @@ buttons:
   enable_notifications: "Habilitar notificaciones"
   disable_notifications: "Deshabilitar notificaciones"
   submit_report: "Enviar reporte"
-  report_false_positive: "Reportar falso positivo"
   nav_prev: "\u25C4"
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
@@ -465,14 +464,6 @@ join_protection:
   request_action_approved_temp_restricted: "Se aprobó la solicitud de ingreso. Se restringió temporalmente al miembro."
   request_action_approved_restricted: "Se aprobó la solicitud de ingreso. Se restringió al miembro."
   request_action_approved: "Se aprobó la solicitud de ingreso."
-
-false_positive:
-  expired: "Esta acción de Reportar falso positivo ha expirado o ya fue utilizada."
-  not_permitted: "Solo los moderadores del chat pueden reportar un falso positivo."
-  already_submitted: "Ya se envió un reporte de falso positivo para este mensaje."
-  submitted: "Reporte de falso positivo enviado."
-  submit_failed: "No se pudo enviar el reporte de falso positivo."
-  submitted_block: "<b>Reporte de falso positivo enviado</b>\n<b>ID del reporte:</b> <code>{0}</code>"
 
 scanning:
   chat_label: "<b>Chat:</b> {0}"

@@ -41,7 +41,6 @@ buttons:
   enable_notifications: "Включить уведомления"
   disable_notifications: "Выключить уведомления"
   submit_report: "Отправить жалобу"
-  report_false_positive: "Сообщить о ложном срабатывании"
   nav_prev: "\u25C4"
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
@@ -465,14 +464,6 @@ join_protection:
   request_action_approved_temp_restricted: "Заявка на вступление одобрена. Участник временно ограничен."
   request_action_approved_restricted: "Заявка на вступление одобрена. Участник ограничен."
   request_action_approved: "Заявка на вступление одобрена."
-
-false_positive:
-  expired: "Действие для сообщения о ложном срабатывании истекло или уже было использовано."
-  not_permitted: "Сообщить о ложном срабатывании могут только модераторы чата."
-  already_submitted: "Отчет о ложном срабатывании для этого сообщения уже отправлен."
-  submitted: "Отчет о ложном срабатывании отправлен."
-  submit_failed: "Не удалось отправить отчет о ложном срабатывании."
-  submitted_block: "<b>Отчет о ложном срабатывании отправлен</b>\n<b>ID жалобы:</b> <code>{0}</code>"
 
 scanning:
   chat_label: "<b>Чат:</b> {0}"
