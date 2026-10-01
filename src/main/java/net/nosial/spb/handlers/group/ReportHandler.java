@@ -475,7 +475,7 @@ public final class ReportHandler extends Handler
         boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessageId, authorId, ReportAttachments.forReport(context, message), reporterIsAdmin);
 
-        InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context.languages(), resolveLanguage(context, message), session);
+        InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context, resolveLanguage(context, message), session);
         SendMessage prompt = SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .text(context.languages().get(resolveLanguage(context, message), "report", "incident_prompt"))
@@ -505,7 +505,7 @@ public final class ReportHandler extends Handler
         ReportContext session = reportSessions(context).create(message, targetMessage,
                 ReportAttachments.forReport(context, targetMessage), reporterIsAdmin, ephemeral);
 
-        InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context.languages(),
+        InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context,
                 resolveLanguage(context, message), session);
         SendMessage prompt = SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
@@ -682,11 +682,18 @@ public final class ReportHandler extends Handler
      * @param session the report session
      * @return the inline keyboard markup
      */
-    private static InlineKeyboardMarkup buildIncidentTypeMarkup(LanguageManager lm, Language lang, ReportContext session)
+    private static InlineKeyboardMarkup buildIncidentTypeMarkup(HandlerContext context, Language lang, ReportContext session)
     {
+        LanguageManager lm = context.languages();
+        // A server that declines illegal content rejects ILLEGAL_CONTENT reports, so it is not offered
+        boolean illegalContentAllowed = ReportSubmissionService.isIllegalContentAllowed(context);
         List<InlineKeyboardRow> rows = new ArrayList<>();
         for (IncidentType type : IncidentType.values())
         {
+            if (type == IncidentType.ILLEGAL_CONTENT && !illegalContentAllowed)
+            {
+                continue;
+            }
             rows.add(new InlineKeyboardRow(button(MessageHelper.displayName(type), CALLBACK_PREFIX + ":" + session.hash() + ":type:" + type.name())));
         }
         rows.add(new InlineKeyboardRow(button(lm.get(lang, "general", "cancel"), CALLBACK_PREFIX + ":" + session.hash() + ":cancel")));

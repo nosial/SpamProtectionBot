@@ -1,9 +1,11 @@
 package net.nosial.spb.classes;
 
 import net.nosial.spb.enums.ReportOrigin;
+import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.records.ContentInput;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.ReportSubmission;
+import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.classes.managers.UserManager;
 import net.nosial.spb.classes.notifications.NotificationFormatter;
 import net.nosial.spb.objects.Language;
@@ -156,6 +158,15 @@ public final class ReportSubmissionService
             return null;
         }
 
+        if (session.incidentType() == IncidentType.ILLEGAL_CONTENT && !isIllegalContentAllowed(context))
+        {
+            if (origin.isSummarised())
+            {
+                sendError(context, lang, session, context.languages().get(lang, "report_submit", "illegal_content_not_allowed"));
+            }
+            return null;
+        }
+
         Message updateMessage = context.update().getMessage();
         if (updateMessage != null)
         {
@@ -216,6 +227,20 @@ public final class ReportSubmissionService
             }
             return null;
         }
+    }
+
+    /**
+     * Checks whether the Federation server accepts reports with the {@code ILLEGAL_CONTENT} incident type. A server
+     * that declines illegal content rejects such reports with HTTP 403. When the server information cannot be read,
+     * the report is left for the server to accept or reject.
+     *
+     * @param context the per-update command context
+     * @return false only when the server publishes that it does not accept illegal content
+     */
+    public static boolean isIllegalContentAllowed(HandlerContext context)
+    {
+        ServerInformation information = MessageHelper.serverInformation(context);
+        return information == null || information.isIllegalContentAllowed();
     }
 
     /**
