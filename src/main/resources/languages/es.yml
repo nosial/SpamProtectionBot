@@ -331,6 +331,7 @@ report_submit:
   not_configured: "La función de reportar no está disponible porque la Federación no está configurada."
   not_authorized: "La función de reportar no está disponible porque el token de acceso a la Federación del bot no tiene permisos de cliente."
   submit_failed: "Error al enviar el reporte. Por favor, inténtelo de nuevo más tarde."
+  illegal_content_not_allowed: "Este servidor de la Federación no acepta reportes de contenido ilegal. Por favor, elija otro tipo de incidente."
   title: "<b>#REPORTE_ENVIADO</b>\n"
   chat: "<b>Chat:</b> {0}"
   reported_user: "<b>Usuario reportado:</b> {0}"

@@ -331,6 +331,7 @@ report_submit:
   not_configured: "举报功能不可用，因为未配置联邦。"
   not_authorized: "举报功能不可用，因为机器人的联邦访问令牌不具备客户端权限。"
   submit_failed: "提交举报失败。请稍后再试。"
+  illegal_content_not_allowed: "此联邦服务器不接受非法内容举报。请选择其他事件类型。"
   title: "<b>#举报已提交</b>\n"
   chat: "<b>聊天：</b> {0}"
   reported_user: "<b>被举报用户：</b> {0}"

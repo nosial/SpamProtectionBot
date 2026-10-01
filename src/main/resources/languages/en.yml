@@ -331,6 +331,7 @@ report_submit:
   not_configured: "Reporting is not available because Federation is not configured."
   not_authorized: "Reporting is not available because the bot's Federation access token does not have client permissions."
   submit_failed: "Failed to submit the report. Please try again later."
+  illegal_content_not_allowed: "This Federation server does not accept reports of illegal content. Please choose another incident type."
   title: "<b>#REPORT_SUBMITTED</b>\n"
   chat: "<b>Chat:</b> {0}"
   reported_user: "<b>Reported User:</b> {0}"
