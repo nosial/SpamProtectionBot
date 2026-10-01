@@ -1,8 +1,5 @@
 package net.nosial.spb.utilities;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.nosial.jfederation.enums.ClassificationFlag;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.FileAttachmentRecord;
@@ -16,6 +13,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import tools.jackson.databind.JsonNode;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +33,6 @@ import java.util.stream.Stream;
 public final class EvidenceRenderer
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(EvidenceRenderer.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private EvidenceRenderer()
     {
@@ -197,14 +194,7 @@ public final class EvidenceRenderer
         }
         html.append('\n');
         html.append(lm.get(lang, "evidence", "metadata_header"));
-        try
-        {
-            html.append(HtmlEscape.escape(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(metadata)));
-        }
-        catch (JsonProcessingException e)
-        {
-            html.append(HtmlEscape.escape(metadata.toString()));
-        }
+        html.append(HtmlEscape.escape(metadata.toPrettyString()));
         html.append("</pre>\n");
     }
 
