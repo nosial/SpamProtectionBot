@@ -12,7 +12,7 @@ This is an ongoing update
 
 ## [1.0.10] - 2026-10-01
 
-This is an ongoing update, following version `v1.0-R3` of the OFD Specification.
+This is a regular update, following version `v1.0-R3` of the OFD Specification.
 
 ### Changed
  - Updated all required dependencies to the latest compatible version
