@@ -164,7 +164,6 @@ class HandlerRoutingTest
                 "report:open,                 ReportHandler",
                 "report_action:delete,        ReportActionHandler",
                 "rpa:-100123:45:67:ban,       ReportActionHandler",
-                "false-report:abc,            FalsePositiveHandler",
                 "secset:open,                 SecretarySettingsHandler",
                 "seccontact:allow,            SecretarySettingsHandler",
                 "operator-report:close,       OperatorReportHandler",

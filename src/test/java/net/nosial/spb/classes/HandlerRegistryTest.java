@@ -122,7 +122,7 @@ class HandlerRegistryTest
                     .toList();
 
             assertEquals(List.of("AuthenticationHandler", "BlacklistHandler", "BotMembershipHandler", "ChannelConnectHandler",
-                    "ConfigurationHandler", "EvidenceHandler", "FalsePositiveHandler", "HelpHandler",
+                    "ConfigurationHandler", "EvidenceHandler", "HelpHandler",
                     "InfoHandler", "JoinProtectionHandler", "LanguageHandler", "LinkHandler",
                     "OperatorReportHandler", "PingHandler", "RegistrationHandler", "ReportActionHandler",
                     "ReportHandler", "ScanningHandler", "SecretaryConnectionHandler", "SecretaryMessageHandler",

@@ -61,8 +61,7 @@ import java.util.List;
  * the report, or cancelling the dialog. The handler validates that the callback originated from
  * the session owner and edits the prompt accordingly. Both ephemeral group prompts and regular
  * private-chat prompts are supported. Moderation actions ({@code delete}/{@code mute}/{@code ban})
- * announced by report notifications, and the one-time report-false-positive action attached to
- * scanning notifications, are handled here as well.
+ * announced by report notifications are handled here as well.
  *
  * <p>Validation and dialog prompts in groups are sent as ephemeral messages visible only to the
  * reporter. Report submission summaries are sent privately to the reporter when possible, with

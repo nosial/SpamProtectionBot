@@ -1,7 +1,6 @@
 package net.nosial.spb.objects;
 
 import net.nosial.spb.classes.sessions.ConfigurationSessionManager;
-import net.nosial.spb.classes.sessions.FalsePositiveReportSessionManager;
 import net.nosial.spb.classes.sessions.ReportActionTracker;
 import net.nosial.spb.classes.sessions.ReportSessionManager;
 
@@ -16,13 +15,11 @@ import java.util.Objects;
  *
  * @param configuration configuration sessions opened by {@code /start} or {@code /settings} in a group
  * @param report report dialogs opened by {@code /report}
- * @param falsePositive one-shot actions attached to a moderation notification
  * @param reportActions which moderators' report notifications carry buttons, and whether one was used
  */
 public record SessionRegistry(
         ConfigurationSessionManager configuration,
         ReportSessionManager report,
-        FalsePositiveReportSessionManager falsePositive,
         ReportActionTracker reportActions)
 {
     /**
@@ -33,7 +30,6 @@ public record SessionRegistry(
     {
         Objects.requireNonNull(configuration, "configuration session manager must not be null");
         Objects.requireNonNull(report, "report session manager must not be null");
-        Objects.requireNonNull(falsePositive, "false-positive session manager must not be null");
         Objects.requireNonNull(reportActions, "report action tracker must not be null");
     }
 
@@ -42,7 +38,6 @@ public record SessionRegistry(
      */
     public SessionRegistry()
     {
-        this(new ConfigurationSessionManager(), new ReportSessionManager(),
-                new FalsePositiveReportSessionManager(), new ReportActionTracker());
+        this(new ConfigurationSessionManager(), new ReportSessionManager(), new ReportActionTracker());
     }
 }

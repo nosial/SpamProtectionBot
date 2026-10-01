@@ -41,7 +41,6 @@ buttons:
   enable_notifications: "启用通知"
   disable_notifications: "禁用通知"
   submit_report: "提交举报"
-  report_false_positive: "误报举报"
   nav_prev: "\u25C4"
   nav_menu: "\u25CB"
   nav_next: "\u25BA"
@@ -465,14 +464,6 @@ join_protection:
   request_action_approved_temp_restricted: "已批准入群申请。已临时限制该成员。"
   request_action_approved_restricted: "已批准入群申请。已限制该成员。"
   request_action_approved: "已批准入群申请。"
-
-false_positive:
-  expired: "此误报举报操作已过期或已被使用。"
-  not_permitted: "只有该群组的管理员才能举报误报。"
-  already_submitted: "此消息的误报举报已提交。"
-  submitted: "误报举报已提交。"
-  submit_failed: "误报举报提交失败。"
-  submitted_block: "<b>误报举报已提交</b>\n<b>举报 ID：</b> <code>{0}</code>"
 
 scanning:
   chat_label: "<b>聊天：</b> {0}"
