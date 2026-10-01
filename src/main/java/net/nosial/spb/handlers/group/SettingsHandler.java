@@ -81,7 +81,7 @@ public final class SettingsHandler extends Handler
                     .chatId(String.valueOf(message.getChatId()))
                     .replyToMessageId(message.getMessageId())
                     .messageThreadId(MessageHelper.topicId(message))
-                    .receiverUserId(message.getFrom().getId())
+                    .ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom().getId()))
                     .text(context.languages().get(lang, "settings", "bot_admin_required"))
                     .parseMode(ParseMode.HTML)
                     .build());

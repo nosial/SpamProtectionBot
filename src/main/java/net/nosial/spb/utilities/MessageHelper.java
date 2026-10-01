@@ -7,6 +7,7 @@ import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.objects.context.HandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.objects.ephemeral.EphemeralMessageParameters;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -52,6 +53,25 @@ public final class MessageHelper
             return null;
         }
         return message.getMessageThreadId();
+    }
+
+    /**
+     * Builds the parameters that make a sent message ephemeral to one user.
+     *
+     * <p>A {@code null} receiver means the message is not ephemeral and yields {@code null}: an
+     * ephemeral parameters object without a receiver fails the Bot API's validation.
+     *
+     * @param receiverUserId the user who will see the message, or {@code null} for a regular message
+     * @return the ephemeral parameters, or {@code null} when {@code receiverUserId} is {@code null}
+     */
+    public static EphemeralMessageParameters ephemeralTo(Long receiverUserId)
+    {
+        if (receiverUserId == null)
+        {
+            return null;
+        }
+
+        return EphemeralMessageParameters.builder().receiverUserId(receiverUserId).build();
     }
 
     /**

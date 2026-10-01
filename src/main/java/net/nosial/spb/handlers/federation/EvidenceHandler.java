@@ -126,7 +126,7 @@ public final class EvidenceHandler extends Handler
     {
         return execute(context, "evidence-ephemeral", SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
-                .receiverUserId(message.getFrom() != null ? message.getFrom().getId() : null)
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom() != null ? message.getFrom().getId() : null))
                 .replyToMessageId(message.getMessageId())
                 .messageThreadId(MessageHelper.topicId(message))
                 .text(html)

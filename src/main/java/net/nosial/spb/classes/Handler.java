@@ -451,7 +451,7 @@ public abstract class Handler
                 .parseMode(ParseMode.HTML);
         if (useEphemeral && hasFrom)
         {
-            builder.receiverUserId(message.getFrom().getId());
+            builder.ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom().getId()));
         }
         if (markup != null)
         {
@@ -491,7 +491,7 @@ public abstract class Handler
         context.telegramClient().execute(SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .messageThreadId(MessageHelper.topicId(message))
-                .receiverUserId(message.getFrom().getId())
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom().getId()))
                 .text(text)
                 .build());
     }

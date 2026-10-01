@@ -510,7 +510,7 @@ public final class ReportHandler extends Handler
         SendMessage prompt = SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .messageThreadId(messageThreadId)
-                .receiverUserId(ephemeral ? message.getFrom().getId() : null)
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(ephemeral ? message.getFrom().getId() : null))
                 .text(context.languages()
                         .get(resolveLanguage(context, message), "report", "incident_prompt"))
                 .replyMarkup(markup)

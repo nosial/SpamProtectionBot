@@ -160,7 +160,7 @@ public final class ConfigurationHandler extends Handler
         Integer topicId = source != null && source.getChatId() == session.chatId() ? MessageHelper.topicId(source) : null;
         Message sent = execute(context, "open-main-menu", SendMessage.builder()
                 .chatId(chatId)
-                .receiverUserId(session.ephemeral() ? session.userId() : null)
+                .ephemeralMessageParameters(MessageHelper.ephemeralTo(session.ephemeral() ? session.userId() : null))
                 .messageThreadId(topicId)
                 .text(html)
                 .parseMode(ParseMode.HTML)

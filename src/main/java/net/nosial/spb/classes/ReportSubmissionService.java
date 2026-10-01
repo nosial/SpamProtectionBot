@@ -574,7 +574,7 @@ public final class ReportSubmissionService
             context.telegramClient().execute(SendMessage.builder()
                     .chatId(String.valueOf(session.chatId()))
                     .messageThreadId(session.messageThreadId())
-                    .receiverUserId(session.ephemeral() ? session.reporterId() : null)
+                    .ephemeralMessageParameters(MessageHelper.ephemeralTo(session.ephemeral() ? session.reporterId() : null))
                     .text(html)
                     .parseMode(ParseMode.HTML)
                     .replyMarkup(markup)
