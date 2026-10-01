@@ -16,23 +16,18 @@ import net.nosial.spb.objects.Language;
 import net.nosial.spb.utilities.EntityActionResolver;
 import net.nosial.spb.utilities.HostExtractor;
 import net.nosial.spb.classes.notifications.NotificationFormatter;
-import net.nosial.spb.classes.sessions.FalsePositiveReportSessionManager;
 import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.objects.database.ChatConfiguration;
 import net.nosial.spb.objects.AdminInfo;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.MediaGroupState;
 import net.nosial.spb.objects.NotificationAnchor;
-import net.nosial.spb.objects.context.FalsePositiveReportContext;
-import net.nosial.spb.objects.ReportAttachment;
 import net.nosial.spb.objects.ScanningOutcome;
 import net.nosial.spb.utilities.MessageContent;
 import org.slf4j.Logger;
 import net.nosial.spb.utilities.MessageHelper;
 import net.nosial.spb.utilities.ModerationActions;
-import net.nosial.spb.utilities.ReportAttachments;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
@@ -41,16 +36,12 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberAdministrator;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberOwner;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
-import java.io.File;
-import java.nio.file.Files;
 import net.nosial.spb.classes.notifications.NotificationSender;
 
 /**
@@ -250,11 +241,9 @@ public final class ScanningHandler extends Handler
         // Moderators are shown the message by forwarding it, which Telegram refuses once it is
         // deleted, so it is forwarded to every destination before anything is done to it and the
         // notification replies to that copy afterwards.
-        List<ReportAttachment> falsePositiveAttachments = List.of();
         List<NotificationAnchor> anchors = List.of();
         if (configuration.scanningNotificationsEnabled())
         {
-            falsePositiveAttachments = captureReportAttachments(context, message);
             anchors = NotificationSender.forwardForNotification(context, message.getChatId(), targetMessageIds);
         }
 
@@ -283,7 +272,7 @@ public final class ScanningHandler extends Handler
         // notification says what could not be done.
         sendScanningObservation(context, configuration, message,
                 new ScanningOutcome(contentSuggestion, entitySuggestion, deletedMessageIds, deleteContent, entityAction, entityActionApplied, textRestrictionApplied),
-                falsePositiveAttachments, anchors, entityQuery);
+                anchors, entityQuery);
     }
 
     /**
@@ -630,69 +619,6 @@ public final class ScanningHandler extends Handler
     }
 
     /**
-     * Captures the message's report attachments together with their raw bytes so they can be
-     * submitted later even after the message (and its Telegram file references) have been deleted.
-     * Must be invoked before any deletion of {@code message}.
-     *
-     * @param context the per-update command context
-     * @param message the incoming message
-     * @return the attachments with eagerly captured content, or the lazy file references when the
-     *         bytes could not be downloaded
-     */
-    static List<ReportAttachment> captureReportAttachments(HandlerContext context, Message message)
-    {
-        List<ReportAttachment> attachments = ReportAttachments.forReport(context, message);
-        if (attachments.isEmpty() || context.telegramClient() == null)
-        {
-            return attachments;
-        }
-        List<ReportAttachment> enriched = new ArrayList<>(attachments.size());
-        for (ReportAttachment attachment : attachments)
-        {
-            enriched.add(ReportAttachment.withContent(attachment, downloadAttachmentBytes(context, attachment)));
-        }
-        return List.copyOf(enriched);
-    }
-
-    /**
-     * Downloads the bytes of a given report attachment from Telegram using the provided handler context.
-     *
-     * @param context the handler context, which includes the Telegram client for performing the download
-     * @param attachment the report attachment containing the file ID of the file to be downloaded
-     * @return a byte array containing the file's content, or null if the download fails
-     */
-    private static byte[] downloadAttachmentBytes(HandlerContext context, ReportAttachment attachment)
-    {
-        File downloaded = null;
-        try
-        {
-            org.telegram.telegrambots.meta.api.objects.File telegramFile = context.telegramClient().execute(GetFile.builder().fileId(attachment.fileId()).build());
-            downloaded = context.telegramClient().downloadFile(telegramFile);
-            return Files.readAllBytes(downloaded.toPath());
-        }
-        catch (Exception e)
-        {
-            LOGGER.warn("Failed to cache Telegram attachment {} for false-positive report: {}",
-                    attachment.fileId(), e.getMessage());
-            return null;
-        }
-        finally
-        {
-            if (downloaded != null)
-            {
-                try
-                {
-                    Files.deleteIfExists(downloaded.toPath());
-                }
-                catch (Exception e)
-                {
-                    LOGGER.debug("Could not delete temporary Telegram download {}: {}", downloaded, e.getMessage());
-                }
-            }
-        }
-    }
-
-    /**
      * Determines whether the given MediaGroupState is restricted and authored
      * by the sender of the provided message.
      *
@@ -730,8 +656,7 @@ public final class ScanningHandler extends Handler
     /**
      * Sends a scanning observation notification to the chat, provided that scanning notifications
      * are enabled in the chat configuration. This method checks the language preferences of the chat,
-     * the authentication status of the federation, and creates a report for false positive messages
-     * if applicable, attaching the necessary context.
+     * and attaches a button opening the author's entity in the Federation Web Application.
      *
      * @param context the current {@link HandlerContext} providing access to framework utilities,
      *                managers, and session methods.
@@ -739,15 +664,13 @@ public final class ScanningHandler extends Handler
      *                      containing settings like whether scanning notifications are enabled.
      * @param message the {@link Message} being scanned, which potentially triggers a scanning observation.
      * @param outcome the result of the scanning operation, represented as a {@link ScanningOutcome}.
-     * @param falsePositiveAttachments a list of {@link ReportAttachment} entities that might be relevant
-     *                                 for reporting a false positive case.
      * @param anchors the destinations the message was forwarded to before it was acted on; the
      *                notification replies to each forwarded copy.
      * @param entityQuery the author's entity query, linked from the notification; {@code null} when
      *                    the author was not queried
      */
     private void sendScanningObservation(HandlerContext context, ChatConfiguration configuration, Message message, ScanningOutcome outcome,
-                                         List<ReportAttachment> falsePositiveAttachments, List<NotificationAnchor> anchors,
+                                         List<NotificationAnchor> anchors,
                                          EntityQueryResult entityQuery)
     {
         if (!configuration.scanningNotificationsEnabled())
@@ -757,38 +680,10 @@ public final class ScanningHandler extends Handler
 
         Language lang = context.managers().languagePreferences().getChatLanguage(message.getChatId());
 
-        // Reporting a false positive submits as the bot itself, which the server refuses
-        // unconditionally without client permissions. Offering the button anyway would only ever
-        // end in a failure alert, so it — and the session it would need — is skipped entirely.
-        String text = MessageContent.contentToScan(message);
-        InlineKeyboardMarkup markup = null;
-        if (context.federation().isAuthenticated())
-        {
-            FalsePositiveReportContext falsePositive = context.sessions().falsePositive().create(message, text, falsePositiveAttachments);
-            markup = falsePositiveMarkup(context.languages(), lang, falsePositive);
-        }
-        markup = FederationWebLinks.attach(markup, context.webLinks().entityButton(context.languages(), lang, entityQuery));
+        InlineKeyboardMarkup markup = FederationWebLinks.attach(null, context.webLinks().entityButton(context.languages(), lang, entityQuery));
 
         NotificationSender.notifyAnchored(context, anchors,
                 scanningNotificationHtml(context.languages(), lang, configuration, message, outcome), markup);
-    }
-
-    /**
-     * Builds the one-button keyboard that lets a moderator flag a scan result as wrong.
-     *
-     * @param languageManager the translations
-     * @param lang the language of the chat the notification goes to
-     * @param session the one-shot action the button carries
-     * @return the inline keyboard
-     */
-    static InlineKeyboardMarkup falsePositiveMarkup(LanguageManager languageManager, Language lang, FalsePositiveReportContext session)
-    {
-        return InlineKeyboardMarkup.builder()
-                .keyboardRow(new InlineKeyboardRow(InlineKeyboardButton.builder()
-                        .text(languageManager.get(lang, "buttons", "report_false_positive"))
-                        .callbackData(FalsePositiveReportSessionManager.callbackData(session))
-                        .build()))
-                .build();
     }
 
     /**

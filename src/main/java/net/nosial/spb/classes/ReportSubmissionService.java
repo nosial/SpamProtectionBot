@@ -95,18 +95,6 @@ public final class ReportSubmissionService
     }
 
     /**
-     * Submits the evidence captured by a scanning notification as a one-time false-positive
-     * report. Unlike a user-initiated {@code /report}, confirmation is returned by the callback
-     * query and the notification message is updated, so no summary is posted to the protected chat.
-     *
-     * @return the submitted report UUID, or {@code null} when Federation rejected the report
-     */
-    public static String submitFalsePositive(HandlerContext context, ReportContext session) throws TelegramApiException
-    {
-        return submitInternal(context, session, ReportOrigin.FALSE_POSITIVE, null, null);
-    }
-
-    /**
      * Submits a report on behalf of an authenticated operator purely to obtain a supporting report
      * reference, typically to back a {@code /blacklist} record.
      *
@@ -200,7 +188,7 @@ public final class ReportSubmissionService
             ReportSubmission submission = context.federation().submitReport(accessToken, reportingEntity, evidence, session.incidentType(), reportMessage);
             uploadAttachments(context, accessToken, submission, session, configuration.privacyMode());
             LOGGER.debug("Report submitted successfully: uuid={}", submission.getReport().uuid());
-            if (origin.notifiesModerators() && configuration.reportingNotificationsEnabled() && !ReportOrigin.FALSE_REPORT_EVIDENCE_TAG.equals(origin.evidenceTag()))
+            if (origin.notifiesModerators() && configuration.reportingNotificationsEnabled())
             {
                 String reportUuid = submission.getReport().uuid();
                 String html = notificationHtml(context.languages(), lang, context, session, reportUuid, reportMessage);
@@ -346,36 +334,26 @@ public final class ReportSubmissionService
     /**
      * Handles the process of uploading an attachment to a specified evidence record.
      * <p>
-     * This method stages the attachment data as a file, either from cached content or via
-     * downloading it, and uploads it to a designated storage using the provided context.
+     * This method downloads the attachment from Telegram, stages it as a file, and uploads it to a
+     * designated storage using the provided context.
      * Temporary files, if created, will be cleaned up automatically after the operation.
      *
      * @param context The handler context that provides access to the telegram client
      *                      and federation service for uploading the attachment.
      * @param accessToken A valid access token used for authenticating the upload request.
      * @param evidenceUuid The UUID of the evidence record to which the attachment is being uploaded.
-     * @param attachment The attachment object containing the necessary metadata, like file ID
-     *                   and cached content, to handle the staging and uploading process.
+     * @param attachment The attachment object containing the necessary metadata, like file ID,
+     *                   to handle the staging and uploading process.
      */
     private static void uploadAttachment(HandlerContext context, String accessToken, String evidenceUuid, ReportAttachment attachment)
     {
         File staged = null;
         try
         {
-            String fileName;
-            byte[] cachedContent = attachment.content();
-            if (cachedContent != null && cachedContent.length > 0)
-            {
-                fileName = attachment.fileName() != null && !attachment.fileName().isBlank() ? attachment.fileName() : "telegram-" + attachment.fileId();
-                staged = stageBytesToFile(cachedContent, fileName);
-            }
-            else
-            {
-                org.telegram.telegrambots.meta.api.objects.File telegramFile = context.telegramClient().execute(GetFile.builder().fileId(attachment.fileId()).build());
-                File downloaded = context.telegramClient().downloadFile(telegramFile);
-                fileName = uploadFileName(attachment, telegramFile);
-                staged = stageUploadFile(downloaded, fileName);
-            }
+            org.telegram.telegrambots.meta.api.objects.File telegramFile = context.telegramClient().execute(GetFile.builder().fileId(attachment.fileId()).build());
+            File downloaded = context.telegramClient().downloadFile(telegramFile);
+            String fileName = uploadFileName(attachment, telegramFile);
+            staged = stageUploadFile(downloaded, fileName);
             context.federation().uploadAttachment(accessToken, evidenceUuid, staged.getAbsolutePath(), fileName);
             LOGGER.debug("Uploaded Telegram file {} to evidence {}", attachment.fileId(), evidenceUuid);
         }
@@ -534,29 +512,6 @@ public final class ReportSubmissionService
         return staged.toFile();
     }
 
-    /**
-     * Stages eagerly captured raw bytes into a temporary file ready for Federation upload, so the
-     * attachment survives the source message being deleted from Telegram.
-     *
-     * @param content the raw file bytes
-     * @param fileName the display name used to derive the temporary extension
-     * @return the staged temporary file
-     * @throws Exception if the temporary file cannot be written
-     */
-    public static File stageBytesToFile(byte[] content, String fileName) throws Exception
-    {
-        Path filePath = Path.of(fileName).getFileName();
-        String name = filePath != null ? filePath.toString() : "attachment";
-        int extensionStart = name.lastIndexOf('.');
-        String extension = extensionStart >= 0 ? name.substring(extensionStart) : "";
-        if (extension.length() > 20)
-        {
-            extension = "";
-        }
-        Path staged = Files.createTempFile("spb-report-", extension);
-        Files.write(staged, content);
-        return staged.toFile();
-    }
 
     /**
      * Sends a message or updates an existing message in the origin chat depending on the session context.
