@@ -8,8 +8,6 @@ import net.nosial.spb.objects.Language;
 import net.nosial.spb.handlers.secretary.SecretarySettingsHandler;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.context.ConfigurationContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
@@ -30,8 +28,6 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 @UpdateHandler(value = UpdateType.COMMAND, commands = "settings")
 public final class SettingsHandler extends Handler
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SettingsHandler.class);
-
     @Override
     public void handle(HandlerContext context) throws TelegramApiException
     {
@@ -52,8 +48,11 @@ public final class SettingsHandler extends Handler
     /**
      * Handles {@code /settings} in a group chat.
      *
-     * <p>Only administrators with the ability to change group information are answered. The
-     * settings menu is sent as an ephemeral message visible only to the sender. The bot must be
+     * <p>Only administrators with the ability to change group information get the menu; anyone
+     * else is told so in an ephemeral reply. A command sent on behalf of a chat (an anonymous
+     * administrator or a channel) cannot be answered ephemerally or tied to a person, so it gets a
+     * regular reply, without buttons, asking for the command from a personal account. The settings
+     * menu is sent as an ephemeral message visible only to the sender. The bot must be
      * a change-information administrator for the menu to open. Both permissions are checked
      * against Telegram's current administrator list, not a cached one.
      *
@@ -69,8 +68,14 @@ public final class SettingsHandler extends Handler
 
         if (!isChangeInformationAdministrator(context, message))
         {
-            LOGGER.debug("Ignoring /settings from non-administrator {} in chat {}",
-                    message.getFrom(), message.getChatId());
+            Language lang = resolveLanguage(context, message);
+            if (message.getFrom() == null || message.getSenderChat() != null)
+            {
+                replyHtml(context, "settings-anonymous-sender", message,
+                        context.languages().get(lang, "settings", "anonymous_sender"), null);
+                return;
+            }
+            sendEphemeralHtml(context, message, context.languages().get(lang, "settings", "admin_required"));
             return;
         }
 
