@@ -21,7 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -496,6 +500,85 @@ class ManagerRegistryTest
                     .getSecretaryContact("conn-1", 99L).isEmpty());
             assertTrue(ManagerRegistryTest.this.managers.secretaryContacts()
                     .getSecretaryContact("conn-2", 99L).isPresent(), "other connections are untouched");
+        }
+
+        @Test
+        @DisplayName("content scanning starts off and the toggle is stored")
+        void scanningToggle() throws Exception
+        {
+            SecretaryConfigurationManager secretary = ManagerRegistryTest.this.managers.secretaryConfigurations();
+            secretary.createSecretaryConfiguration(42L);
+            assertFalse(secretary.resolve(42L).scanningEnabled());
+
+            secretary.setScanningEnabled(42L, true);
+
+            assertTrue(ManagerRegistryTest.this.reopen().secretaryConfigurations().resolve(42L).scanningEnabled());
+        }
+
+        @Test
+        @DisplayName("a database from before the scanning toggle is migrated with scanning off")
+        void migratesDatabaseWithoutScanningToggle() throws Exception
+        {
+            replaceDatabase("CREATE TABLE secretary_configuration (id INTEGER PRIMARY KEY, "
+                            + "business_connection_id TEXT NOT NULL DEFAULT '', behavior TEXT NOT NULL DEFAULT 'STRICT', "
+                            + "privacy_mode INTEGER NOT NULL DEFAULT 0)",
+                    "INSERT INTO secretary_configuration (id, business_connection_id, behavior) VALUES (42, 'conn-1', 'PASSIVE')");
+
+            SecretaryConfigurationManager secretary = ManagerRegistryTest.this.reopen().secretaryConfigurations();
+
+            assertEquals(new SecretaryConfiguration(42L, "conn-1", ScanningBehavior.PASSIVE, false, false),
+                    secretary.resolve(42L));
+            secretary.createSecretaryConfiguration(43L);
+            secretary.setScanningEnabled(42L, true);
+
+            // A second start finds the column in place and leaves the stored choice alone.
+            SecretaryConfigurationManager restarted = ManagerRegistryTest.this.reopen().secretaryConfigurations();
+            assertTrue(restarted.resolve(42L).scanningEnabled());
+            assertFalse(restarted.resolve(43L).scanningEnabled());
+        }
+
+        @Test
+        @DisplayName("a legacy scanning column is replaced, so legacy users start with scanning off")
+        void replacesLegacyScanningColumn() throws Exception
+        {
+            replaceDatabase("CREATE TABLE secretary_configuration (id INTEGER PRIMARY KEY, "
+                            + "business_connection_id TEXT NOT NULL DEFAULT '', scanning_enabled INTEGER NOT NULL DEFAULT 1, "
+                            + "scanning_behavior TEXT NOT NULL DEFAULT 'PASSIVE', unknown_protection_enabled INTEGER NOT NULL DEFAULT 1, "
+                            + "unknown_protection_behavior TEXT NOT NULL DEFAULT 'PASSIVE', privacy_mode INTEGER NOT NULL DEFAULT 0)",
+                    "INSERT INTO secretary_configuration (id, business_connection_id, scanning_enabled, scanning_behavior) "
+                            + "VALUES (42, 'conn-1', 1, 'STRICT')");
+
+            SecretaryConfigurationManager secretary = ManagerRegistryTest.this.reopen().secretaryConfigurations();
+            secretary.createSecretaryConfiguration(43L);
+
+            assertEquals(new SecretaryConfiguration(42L, "conn-1", ScanningBehavior.STRICT, false, false),
+                    secretary.resolve(42L));
+            assertFalse(secretary.resolve(43L).scanningEnabled(), "new rows take the off default");
+        }
+
+        /**
+         * Replaces the test database with one whose {@code secretary_configuration} table has an
+         * older shape, as an existing deployment would have it.
+         *
+         * @param statements the statements that build the old table and its rows
+         * @throws Exception If the file cannot be replaced
+         */
+        private void replaceDatabase(String... statements) throws Exception
+        {
+            Path path = ManagerRegistryTest.this.directory.resolve("database.db");
+            ManagerRegistryTest.this.database.close();
+            for (String suffix : new String[]{"", "-wal", "-shm"})
+            {
+                Files.deleteIfExists(Path.of(path + suffix));
+            }
+            try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + path);
+                 Statement statement = connection.createStatement())
+            {
+                for (String sql : statements)
+                {
+                    statement.execute(sql);
+                }
+            }
         }
     }
 }

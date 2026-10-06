@@ -263,7 +263,7 @@ public final class SecretaryMessageHandler extends Handler
             return Recommendation.UNKNOWN;
         }
 
-        String text = MessageContent.textOrCaption(message);
+        String text = configuration.scanningEnabled() ? MessageContent.textOrCaption(message) : null;
         boolean hasText = text != null && !text.isBlank();
         String authorEntity = sender.getId() + "@telegram.org";
         boolean contentAnalyzed = false;
