@@ -74,6 +74,8 @@ bot_added:
   ready: "<b>Ready to protect this chat</b>\n\nAn administrator with the Change Group Information permission can send /settings to configure me."
 
 settings:
+  admin_required: "Only group administrators with the <b>Change Group Information</b> permission can open the settings menu."
+  anonymous_sender: "This command was sent on behalf of a chat, so I cannot tell which administrator sent it. Send <code>/settings</code> from your own account to open the settings menu; anonymous administrators need to turn off <b>Remain Anonymous</b> first."
   bot_admin_required: "The bot must be an administrator with the <b>Change Group Information</b> permission to show the settings menu."
   secretary_not_enabled: "<b>Secretary mode is disabled.</b>\n\nTo configure group protection, add the bot to a group and send <code>/start</code> there. To use secretary mode, open Telegram \u2192 Settings \u2192 Business and add this bot as a manager, granting permission to delete messages."
 
