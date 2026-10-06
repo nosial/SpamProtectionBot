@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.MessageContent;
 import net.nosial.spb.objects.ReportAttachment;
+import net.nosial.spb.objects.SecretaryReportTarget;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.spb.classes.Cache;
 import net.nosial.spb.enums.ReportPage;
@@ -80,6 +81,19 @@ public final class ReportSessionManager extends AbstractSessionManager<ReportCon
         return create(forward.getFrom().getId(), forward.getChatId(), originalMessageId, originalAuthorId,
                 MessageContent.textOrCaption(forward), attachments, FlatMetadata.of(forward), null,
                 reporterIsAdmin, false);
+    }
+
+    /**
+     * Opens a dialog in the secretary owner's private chat to report a first-contact business
+     * message they were notified about.
+     *
+     * @param target the business message, as captured when the owner was notified
+     * @return the created session
+     */
+    public ReportContext create(SecretaryReportTarget target)
+    {
+        return create(target.ownerId(), target.ownerId(), target.messageId(), target.contactId(), target.text(),
+                target.attachments(), target.metadata(), null, false, false);
     }
 
     /**

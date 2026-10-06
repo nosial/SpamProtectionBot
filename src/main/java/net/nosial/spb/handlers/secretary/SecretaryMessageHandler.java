@@ -13,13 +13,16 @@ import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.enums.ScanningBehavior;
 import net.nosial.spb.enums.SecretaryContactStatus;
 import net.nosial.spb.objects.Language;
+import net.nosial.spb.objects.SecretaryReportTarget;
 import net.nosial.spb.enums.UpdateType;
 import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.exceptions.FederationException;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.database.SecretaryContact;
 import net.nosial.spb.objects.database.SecretaryConfiguration;
+import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.MessageContent;
+import net.nosial.spb.utilities.ReportAttachments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
@@ -60,7 +63,8 @@ import java.util.Objects;
  *
  * <p>This is the working half of secretary mode. A message from somebody the owner has not spoken
  * to before is checked against Federation, the contact is allowed or denied according to the
- * owner's chosen behavior, and the owner is notified with buttons to overturn the decision. A
+ * owner's chosen behavior, and the owner is notified with buttons to overturn the decision or to
+ * report the message to Federation, including one that was not flagged. A
  * message from an already-allowed contact is left alone; one from a denied contact is deleted
  * without another notification.
  *
@@ -384,9 +388,10 @@ public final class SecretaryMessageHandler extends Handler
                 .chatId(String.valueOf(ownerId))
                 .text(html)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(FederationWebLinks.attach(contactDecisionMarkup(context.languages(),
+                .replyMarkup(FederationWebLinks.attach(withReportButton(context, lang, ownerId, message,
+                        contactDecisionMarkup(context.languages(),
                         new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang,
-                                SecretaryContactStatus.ALLOWED)),
+                                SecretaryContactStatus.ALLOWED))),
                         context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.ENTITY, entityUuid)))
                 .build());
     }
@@ -438,8 +443,9 @@ public final class SecretaryMessageHandler extends Handler
                 .chatId(String.valueOf(ownerId))
                 .text(html)
                 .parseMode(ParseMode.HTML)
-                .replyMarkup(FederationWebLinks.attach(contactDecisionMarkup(context.languages(),
-                        new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang, contactStatus)),
+                .replyMarkup(FederationWebLinks.attach(withReportButton(context, lang, ownerId, message,
+                        contactDecisionMarkup(context.languages(),
+                        new ContactDecision(message.getBusinessConnectionId(), message.getFrom().getId(), lang, contactStatus))),
                         context.webLinks().button(context.languages(), lang, FederationWebLinks.Record.ENTITY, entityUuid)));
         if (evidenceId != null)
         {
@@ -862,6 +868,66 @@ public final class SecretaryMessageHandler extends Handler
             rows.add(new InlineKeyboardRow(
                     InlineKeyboardButton.builder().text(languageManager.get(decision.lang(), "buttons", "secretary_settings"))
                             .callbackData(SecretarySettingsHandler.OPEN_CALLBACK).build()));
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    /**
+     * Appends a Report button to a notification so the owner can report the message to Federation
+     * even when it was not flagged, which is how spam that slipped past the scan gets reported.
+     *
+     * <p>The message cannot be fetched again later, so it is captured now and the button carries a
+     * token for it. Reports are submitted as the bot, which the server refuses without client
+     * permissions, so no button is offered then.
+     *
+     * @param context the per-update context
+     * @param lang the owner's language
+     * @param ownerId the secretary owner being notified
+     * @param message the first-contact business message
+     * @param markup the notification's keyboard
+     * @return the keyboard with a Report row appended, or {@code markup} when reporting is unavailable
+     */
+    private static InlineKeyboardMarkup withReportButton(HandlerContext context, Language lang, long ownerId,
+                                                         Message message, InlineKeyboardMarkup markup)
+    {
+        if (!context.federation().isAuthenticated())
+        {
+            return markup;
+        }
+        String token = context.sessions().secretaryReports().store(new SecretaryReportTarget(ownerId,
+                message.getFrom().getId(), message.getMessageId(), MessageContent.textOrCaption(message),
+                ReportAttachments.forReport(context, message), FlatMetadata.of(message)));
+        List<InlineKeyboardRow> rows = new ArrayList<>(markup.getKeyboard());
+        rows.add(new InlineKeyboardRow(InlineKeyboardButton.builder()
+                .text(context.languages().get(lang, "buttons", "report_message"))
+                .callbackData(SecretarySettingsHandler.REPORT_CALLBACK_PREFIX + ":" + token)
+                .build()));
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    /**
+     * Returns a replacement decision keyboard followed by the Report row of the keyboard it
+     * replaces, so allowing or denying the contact does not take away the option to report.
+     *
+     * @param replacement the new decision keyboard
+     * @param previous the keyboard being replaced, or {@code null}
+     * @return the replacement, with the previous Report row appended when there was one
+     */
+    static InlineKeyboardMarkup keepReportButton(InlineKeyboardMarkup replacement, InlineKeyboardMarkup previous)
+    {
+        if (previous == null || previous.getKeyboard() == null)
+        {
+            return replacement;
+        }
+        List<InlineKeyboardRow> rows = new ArrayList<>(replacement.getKeyboard());
+        for (InlineKeyboardRow row : previous.getKeyboard())
+        {
+            boolean reportRow = row.stream().anyMatch(button -> button.getCallbackData() != null
+                    && button.getCallbackData().startsWith(SecretarySettingsHandler.REPORT_CALLBACK_PREFIX + ":"));
+            if (reportRow)
+            {
+                rows.add(row);
+            }
         }
         return InlineKeyboardMarkup.builder().keyboard(rows).build();
     }

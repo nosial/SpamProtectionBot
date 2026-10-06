@@ -3,6 +3,7 @@ package net.nosial.spb.objects;
 import net.nosial.spb.classes.sessions.ConfigurationSessionManager;
 import net.nosial.spb.classes.sessions.ReportActionTracker;
 import net.nosial.spb.classes.sessions.ReportSessionManager;
+import net.nosial.spb.classes.sessions.SecretaryReportStore;
 
 import java.util.Objects;
 
@@ -16,11 +17,13 @@ import java.util.Objects;
  * @param configuration configuration sessions opened by {@code /start} or {@code /settings} in a group
  * @param report report dialogs opened by {@code /report}
  * @param reportActions which moderators' report notifications carry buttons, and whether one was used
+ * @param secretaryReports first-contact messages a secretary notification offers to report
  */
 public record SessionRegistry(
         ConfigurationSessionManager configuration,
         ReportSessionManager report,
-        ReportActionTracker reportActions)
+        ReportActionTracker reportActions,
+        SecretaryReportStore secretaryReports)
 {
     /**
      * Rejects a partially populated registry, since a missing manager would only fail later on a
@@ -31,6 +34,7 @@ public record SessionRegistry(
         Objects.requireNonNull(configuration, "configuration session manager must not be null");
         Objects.requireNonNull(report, "report session manager must not be null");
         Objects.requireNonNull(reportActions, "report action tracker must not be null");
+        Objects.requireNonNull(secretaryReports, "secretary report store must not be null");
     }
 
     /**
@@ -38,6 +42,6 @@ public record SessionRegistry(
      */
     public SessionRegistry()
     {
-        this(new ConfigurationSessionManager(), new ReportSessionManager(), new ReportActionTracker());
+        this(new ConfigurationSessionManager(), new ReportSessionManager(), new ReportActionTracker(), new SecretaryReportStore());
     }
 }

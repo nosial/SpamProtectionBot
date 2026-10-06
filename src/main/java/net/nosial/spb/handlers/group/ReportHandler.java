@@ -473,12 +473,27 @@ public final class ReportHandler extends Handler
         long targetMessageId = extractForwardMessageId(message);
         boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessageId, authorId, ReportAttachments.forReport(context, message), reporterIsAdmin);
+        sendPrivatePrompt(context, session, resolveLanguage(context, message), null);
+    }
 
-        InlineKeyboardMarkup markup = buildIncidentTypeMarkup(context, resolveLanguage(context, message), session);
+    /**
+     * Opens a report dialog in the reporter's private chat with the bot by sending its incident
+     * type prompt; the dialog then continues through this handler's callbacks and replies.
+     *
+     * @param context the per-update context
+     * @param session the dialog to open, whose chat is the reporter's private chat
+     * @param lang the language of the prompt
+     * @param replyToMessageId the message the prompt answers, or {@code null}
+     * @throws TelegramApiException if the prompt cannot be sent
+     */
+    public static void sendPrivatePrompt(HandlerContext context, ReportContext session, Language lang,
+                                         Integer replyToMessageId) throws TelegramApiException
+    {
         SendMessage prompt = SendMessage.builder()
-                .chatId(String.valueOf(message.getChatId()))
-                .text(context.languages().get(resolveLanguage(context, message), "report", "incident_prompt"))
-                .replyMarkup(markup)
+                .chatId(String.valueOf(session.chatId()))
+                .text(context.languages().get(lang, "report", "incident_prompt"))
+                .replyToMessageId(replyToMessageId)
+                .replyMarkup(buildIncidentTypeMarkup(context, lang, session))
                 .build();
 
         Message sent = context.telegramClient().execute(prompt);

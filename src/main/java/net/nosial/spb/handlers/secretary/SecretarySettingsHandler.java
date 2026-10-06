@@ -11,6 +11,9 @@ import net.nosial.spb.classes.LanguageManager;
 import net.nosial.spb.enums.ScanningBehavior;
 import net.nosial.spb.enums.SecretaryContactStatus;
 import net.nosial.spb.objects.Language;
+import net.nosial.spb.objects.SecretaryReportTarget;
+import net.nosial.spb.objects.context.ReportContext;
+import net.nosial.spb.handlers.group.ReportHandler;
 import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.context.ConfigurationContext;
@@ -39,7 +42,7 @@ import java.util.Optional;
  *
  * <p>Callbacks update secretary behavior or the owner’s per-connection contact decision.
  */
-@UpdateHandler(value = {UpdateType.COMMAND, UpdateType.CALLBACK_QUERY}, commands = {"start", "settings"}, callbackData = {SecretarySettingsHandler.CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_SETTINGS_CALLBACK_PREFIX + ":"}, priority = 100)
+@UpdateHandler(value = {UpdateType.COMMAND, UpdateType.CALLBACK_QUERY}, commands = {"start", "settings"}, callbackData = {SecretarySettingsHandler.CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_SETTINGS_CALLBACK_PREFIX + ":", SecretarySettingsHandler.REPORT_CALLBACK_PREFIX + ":"}, priority = 100)
 public final class SecretarySettingsHandler extends Handler
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(SecretarySettingsHandler.class);
@@ -55,6 +58,8 @@ public final class SecretarySettingsHandler extends Handler
     public static final String OPEN_WITH_BACK_CALLBACK = CALLBACK_PREFIX + ":openfromstart";
     static final String CONTACT_CALLBACK_PREFIX = "seccontact";
     static final String CONTACT_SETTINGS_CALLBACK_PREFIX = "seccontactsettings";
+    /** Opens a report dialog for a first-contact message, from the Report button on its notification. */
+    static final String REPORT_CALLBACK_PREFIX = "secreport";
 
     /** The deep-link payload Telegram uses for the "Manage Bot" button in business chats. */
     private static final String BUSINESS_START_PAYLOAD_PREFIX = "bizChat";
@@ -82,6 +87,12 @@ public final class SecretarySettingsHandler extends Handler
                 || data.startsWith(CONTACT_SETTINGS_CALLBACK_PREFIX + ":"))
         {
             handleContactDecision(context, callbackQuery, data);
+            return;
+        }
+
+        if (data.startsWith(REPORT_CALLBACK_PREFIX + ":"))
+        {
+            handleReport(context, callbackQuery, data.substring(REPORT_CALLBACK_PREFIX.length() + 1));
             return;
         }
 
@@ -441,8 +452,10 @@ public final class SecretarySettingsHandler extends Handler
                     context.telegramClient().execute(EditMessageReplyMarkup.builder()
                             .chatId(String.valueOf(message.getChatId()))
                             .messageId(message.getMessageId())
-                            .replyMarkup(FederationWebLinks.keepLinks(SecretaryMessageHandler.contactDecisionMarkup(
-                                    context.languages(), new ContactDecision(parts[1], contactId, lang, updatedStatus)), message.getReplyMarkup()))
+                            .replyMarkup(FederationWebLinks.keepLinks(SecretaryMessageHandler.keepReportButton(
+                                    SecretaryMessageHandler.contactDecisionMarkup(context.languages(),
+                                            new ContactDecision(parts[1], contactId, lang, updatedStatus)),
+                                    message.getReplyMarkup()), message.getReplyMarkup()))
                             .build());
                 }
             }
@@ -459,6 +472,55 @@ public final class SecretarySettingsHandler extends Handler
             answerAlert(context, callbackQuery, context.languages().get(lang, "general", "error.occurred"));
         }
     }
+    /**
+     * Opens a report dialog for the first-contact message behind a notification's Report button.
+     *
+     * <p>The dialog is the same one a forwarded message opens, sent as a reply to the notification,
+     * so choosing the incident type, commenting and submitting are all handled by
+     * {@link ReportHandler}.
+     *
+     * @param context the per-update context
+     * @param callbackQuery the Report button press
+     * @param token the token identifying the reported message
+     * @throws TelegramApiException if the press cannot be answered or the prompt cannot be sent
+     */
+    private static void handleReport(HandlerContext context, CallbackQuery callbackQuery, String token) throws TelegramApiException
+    {
+        Message message = requireMessage(callbackQuery);
+        if (message == null || callbackQuery.getFrom() == null || message.getChat() == null
+                || !"private".equals(message.getChat().getType()))
+        {
+            answer(context, callbackQuery);
+            return;
+        }
+
+        long ownerId = callbackQuery.getFrom().getId();
+        Language lang = sessionLanguage(context, ownerId);
+        SecretaryReportTarget target = context.sessions().secretaryReports().find(token, ownerId);
+
+        if (target == null)
+        {
+            answerAlert(context, callbackQuery, context.languages().get(lang, "secretary", "report_expired"));
+            return;
+        }
+
+        if (!context.federation().isAvailable())
+        {
+            answerAlert(context, callbackQuery, context.languages().get(lang, "report", "federation_not_configured"));
+            return;
+        }
+
+        if (!context.federation().isAuthenticated())
+        {
+            answerAlert(context, callbackQuery, context.languages().get(lang, "report", "federation_not_authorized"));
+            return;
+        }
+
+        ReportContext session = context.sessions().report().create(target);
+        ReportHandler.sendPrivatePrompt(context, session, lang, message.getMessageId());
+        answer(context, callbackQuery);
+    }
+
     /**
      * Generates an HTML string representing the contact menu for a secretary's contact settings.
      * <p>
