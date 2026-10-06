@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.11] - Ongoing
+## [1.0.11] - 2026-10-06
 
-This is an ongoing update
+This update introduces new features and a bug fix in the /settings command
+
+### Added
+- Secretary Mode first-contact notifications now have a Report Message button for reporting spam Federation missed
+  ([#16](https://github.com/nosial/SpamProtectionBot/issues/16))
+- Secretary Mode settings now have a Scanning toggle, off by default, so message content is only sent to Federation
+  when enabled; the sender is always queried ([#17](https://github.com/nosial/SpamProtectionBot/issues/17))
+
+### Fixed
+- `/settings` in a group now tells members without permission that only administrators can open the menu, instead of
+  staying silent ([#15](https://github.com/nosial/SpamProtectionBot/issues/15))
 
 
 ## [1.0.10] - 2026-10-01
