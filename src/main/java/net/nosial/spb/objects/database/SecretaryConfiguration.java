@@ -14,24 +14,27 @@ import net.nosial.spb.enums.ScanningBehavior;
  * @param businessConnectionId the Telegram business connection id the configuration belongs to
  * @param behavior how messages from unknown contacts are handled
  * @param privacyMode whether scanning minimizes optional Federation data
+ * @param scanningEnabled whether first-contact message content is sent to Federation for scanning;
+ *                        when off, only the sender's Federation record is queried
  */
 public record SecretaryConfiguration(
         long userId,
         String businessConnectionId,
         ScanningBehavior behavior,
-        boolean privacyMode)
+        boolean privacyMode,
+        boolean scanningEnabled)
 {
     /**
      * Creates the configuration a user's secretary mode starts with.
      *
-     * <p>Secretary mode always scans with the sender's identity and always acts on what it finds,
-     * so there is nothing to choose here beyond who it belongs to.
+     * <p>Content scanning starts disabled: a private message falsely flagged as spam could
+     * otherwise end up in a Federation report. The sender is still queried against Federation.
      *
      * @param userId the Telegram user whose account the bot manages
      */
     public SecretaryConfiguration(long userId)
     {
-        this(userId, "", ScanningBehavior.STRICT, false);
+        this(userId, "", ScanningBehavior.STRICT, false, false);
     }
 
     public SecretaryConfiguration

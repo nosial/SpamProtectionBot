@@ -40,7 +40,8 @@ import java.util.Optional;
 /**
  * Handles inline keyboard callbacks for the secretary settings menu.
  *
- * <p>Callbacks update secretary behavior or the owner’s per-connection contact decision.
+ * <p>Callbacks update secretary behavior, toggle content scanning, or change the owner’s
+ * per-connection contact decision.
  */
 @UpdateHandler(value = {UpdateType.COMMAND, UpdateType.CALLBACK_QUERY}, commands = {"start", "settings"}, callbackData = {SecretarySettingsHandler.CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_CALLBACK_PREFIX + ":", SecretarySettingsHandler.CONTACT_SETTINGS_CALLBACK_PREFIX + ":", SecretarySettingsHandler.REPORT_CALLBACK_PREFIX + ":"}, priority = 100)
 public final class SecretarySettingsHandler extends Handler
@@ -60,7 +61,6 @@ public final class SecretarySettingsHandler extends Handler
     static final String CONTACT_SETTINGS_CALLBACK_PREFIX = "seccontactsettings";
     /** Opens a report dialog for a first-contact message, from the Report button on its notification. */
     static final String REPORT_CALLBACK_PREFIX = "secreport";
-
     /** The deep-link payload Telegram uses for the "Manage Bot" button in business chats. */
     private static final String BUSINESS_START_PAYLOAD_PREFIX = "bizChat";
 
@@ -133,6 +133,24 @@ public final class SecretarySettingsHandler extends Handler
             Language lang = sessionLanguage(context, session.userId());
             editMessage(context, message, callbackQuery, StartScreen.html(context, lang), StartScreen.markup(context, lang, callbackQuery.getFrom().getId()));
             answer(context, callbackQuery);
+            return;
+        }
+        else if (action.startsWith("set_scanning:"))
+        {
+            String requested = action.substring("set_scanning:".length());
+            if (!"on".equals(requested) && !"off".equals(requested))
+            {
+                LOGGER.warn("Unsupported secretary scanning state '{}'", requested);
+                answer(context, callbackQuery);
+                return;
+            }
+            setScanningEnabled(context, session.userId(), "on".equals(requested));
+
+            configuration = context.managers().secretaryConfigurations().resolve(session.userId());
+            Language lang = sessionLanguage(context, session.userId());
+            editMessage(context, message, callbackQuery, menuHtml(context, configuration, lang), menuMarkup(context, configuration, session, lang, session.showBackButton()));
+            answer(context, callbackQuery, context.languages().get(lang, "secretary_settings",
+                    configuration.scanningEnabled() ? "toast_scanning_enabled" : "toast_scanning_disabled"));
             return;
         }
         else
@@ -576,7 +594,23 @@ public final class SecretarySettingsHandler extends Handler
     {
         LanguageManager lm = context.languages();
         return lm.get(lang, "secretary_settings", "title") + lm.get(lang, "secretary_settings", "description") + "\n\n" +
-                lm.get(lang, "secretary_settings", "behavior", behaviorSelection(lm, lang, configuration)) + '\n';
+                lm.get(lang, "secretary_settings", "behavior", behaviorSelection(lm, lang, configuration)) + "\n\n" +
+                lm.get(lang, "secretary_settings", "scanning", scanningSelection(lm, lang, configuration)) + '\n';
+    }
+
+    /**
+     * Generates the scanning line of the menu: whether content scanning is on and what that means.
+     *
+     * @param lm the LanguageManager instance used for retrieving localized text
+     * @param lang the language object specifying the language context
+     * @param configuration the configuration object containing the scanning state
+     * @return the localized scanning state and its description, separated by an em dash
+     */
+    private static String scanningSelection(LanguageManager lm, Language lang, SecretaryConfiguration configuration)
+    {
+        return configuration.scanningEnabled()
+                ? lm.get(lang, "general", "enabled") + " — " + lm.get(lang, "secretary_settings", "scanning_enabled_description")
+                : lm.get(lang, "general", "disabled") + " — " + lm.get(lang, "secretary_settings", "scanning_disabled_description");
     }
 
     /**
@@ -617,6 +651,9 @@ public final class SecretarySettingsHandler extends Handler
         }
 
         List<InlineKeyboardRow> rows = new ArrayList<>(rowsOfTwo(behaviorButtons));
+        rows.add(new InlineKeyboardRow(configuration.scanningEnabled()
+                ? actionButton(session, "set_scanning:off", lm.get(lang, "secretary_settings", "disable_scanning"))
+                : actionButton(session, "set_scanning:on", lm.get(lang, "secretary_settings", "enable_scanning"))));
         if (showBackButton)
         {
             rows.add(new InlineKeyboardRow(actionButton(session, "start", lm.get(lang, "general", "back"))));
@@ -665,6 +702,25 @@ public final class SecretarySettingsHandler extends Handler
     {
         return lm.get(lang, "secretary_settings",
                 "behavior_" + behavior.name().toLowerCase() + "_description");
+    }
+
+    /**
+     * Turns content scanning on or off for a specific user.
+     *
+     * @param context the handler context providing access to managers and configurations
+     * @param userId the unique identifier of the user whose secretary configuration is changed
+     * @param scanningEnabled {@code true} to send first-contact message content to Federation
+     */
+    private static void setScanningEnabled(HandlerContext context, long userId, boolean scanningEnabled)
+    {
+        try
+        {
+            context.managers().secretaryConfigurations().setScanningEnabled(userId, scanningEnabled);
+        }
+        catch (DatabaseException e)
+        {
+            LOGGER.warn("Failed to save secretary scanning state for user {}: {}", userId, e.getMessage());
+        }
     }
 
     /**
