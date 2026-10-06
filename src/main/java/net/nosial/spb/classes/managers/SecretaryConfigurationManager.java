@@ -182,6 +182,26 @@ public final class SecretaryConfigurationManager
     }
 
     /**
+     * Sets whether first-contact message content is sent to Federation for scanning.
+     *
+     * <p>The sender's Federation record is queried either way; this only controls whether the
+     * message itself leaves the conversation.
+     *
+     * @param userId the Telegram user id
+     * @param scanningEnabled {@code true} to scan message content
+     * @throws DatabaseException if the write fails
+     */
+    public void setScanningEnabled(long userId, boolean scanningEnabled) throws DatabaseException
+    {
+        this.database.execute("UPDATE secretary_configuration SET scanning_enabled = ? WHERE id = ?", statement ->
+        {
+            statement.setBoolean(1, scanningEnabled);
+            statement.setLong(2, userId);
+        });
+        this.cache.remove(userId);
+    }
+
+    /**
      * Binds the given business connection id to the only user with a configuration that is still
      * awaiting a connection.
      *
@@ -271,7 +291,8 @@ public final class SecretaryConfigurationManager
                         return new SecretaryConfiguration(result.getLong("id"),
                                 result.getString("business_connection_id"),
                                 behavior == ScanningBehavior.MODERATE ? ScanningBehavior.PASSIVE : behavior,
-                                false);
+                                false,
+                                result.getBoolean("scanning_enabled"));
                     }).orElse(null);
         }
         catch (DatabaseException e)
@@ -282,62 +303,89 @@ public final class SecretaryConfigurationManager
     }
 
     /**
-     * Migrates databases created while the configuration still used the scanning/unknown-protection
-     * toggle columns: the new {@code behavior} column is filled from the former
-     * {@code scanning_behavior} column and the obsolete columns are dropped.
+     * Brings an existing {@code secretary_configuration} table up to the current shape at start-up.
      *
-     * <p>Fresh databases created from schema 005 already have the final shape, so the migration is
-     * a no-op there.
+     * <p>Every step checks the table's columns first, so the migration is a no-op on a database
+     * freshly created from the schema and safe to run on every start. All steps run in one
+     * transaction: a database is either fully migrated or left as it was.
+     *
+     * <ul>
+     *   <li>Databases from before the {@code behavior} column get it, filled from the former
+     *   {@code scanning_behavior} column, and the obsolete toggle columns are dropped.</li>
+     *   <li>Databases from before the scanning toggle get a {@code scanning_enabled} column that
+     *   is off for every existing user. A {@code scanning_enabled} column left over from the
+     *   legacy layout is replaced rather than reused, since its values and default predate the
+     *   off-by-default rule.</li>
+     * </ul>
+     *
+     * @throws IllegalStateException if the migration fails; the manager cannot read
+     *                               configurations from a table in the old shape
      */
     private void migrateSchema()
     {
-        try (Connection connection = this.database.getConnection())
+        try
         {
-            boolean hasBehavior = columnExists(connection, "behavior");
-            boolean hasScanningBehavior = columnExists(connection, "scanning_behavior");
-            boolean hasScanningEnabled = columnExists(connection, "scanning_enabled");
-            boolean hasUnknownProtectionEnabled = columnExists(connection, "unknown_protection_enabled");
-            boolean hasUnknownProtectionBehavior = columnExists(connection, "unknown_protection_behavior");
+            this.database.transaction(connection ->
+            {
+                boolean hasBehavior = columnExists(connection, "behavior");
+                boolean hasScanningBehavior = columnExists(connection, "scanning_behavior");
+                boolean hasScanningEnabled = columnExists(connection, "scanning_enabled");
+                boolean hasUnknownProtectionEnabled = columnExists(connection, "unknown_protection_enabled");
+                boolean hasUnknownProtectionBehavior = columnExists(connection, "unknown_protection_behavior");
+                boolean legacyLayout = hasScanningBehavior || hasUnknownProtectionEnabled || hasUnknownProtectionBehavior;
 
-            if (!hasBehavior)
-            {
-                try (Statement statement = connection.createStatement())
+                if (!hasBehavior)
                 {
-                    statement.execute("ALTER TABLE secretary_configuration "
-                            + "ADD COLUMN behavior TEXT NOT NULL DEFAULT 'STRICT'");
-                    LOGGER.info("Added missing column behavior to secretary_configuration");
+                    try (Statement statement = connection.createStatement())
+                    {
+                        statement.execute("ALTER TABLE secretary_configuration "
+                                + "ADD COLUMN behavior TEXT NOT NULL DEFAULT 'STRICT'");
+                        LOGGER.info("Added missing column behavior to secretary_configuration");
+                    }
                 }
-            }
-            if (hasScanningBehavior)
-            {
-                try (Statement statement = connection.createStatement())
+                if (hasScanningBehavior)
                 {
-                    // The former column defaulted to PASSIVE; only rows that were changed deserve
-                    // the migrated behavior.
-                    statement.execute("UPDATE secretary_configuration SET behavior = scanning_behavior "
-                            + "WHERE scanning_behavior IS NOT NULL AND scanning_behavior != 'PASSIVE'");
+                    try (Statement statement = connection.createStatement())
+                    {
+                        // The former column defaulted to PASSIVE; only rows that were changed deserve
+                        // the migrated behavior.
+                        statement.execute("UPDATE secretary_configuration SET behavior = scanning_behavior "
+                                + "WHERE scanning_behavior IS NOT NULL AND scanning_behavior != 'PASSIVE'");
+                    }
                 }
-            }
-            if (hasScanningEnabled)
-            {
-                dropColumn(connection, "scanning_enabled");
-            }
-            if (hasUnknownProtectionEnabled)
-            {
-                dropColumn(connection, "unknown_protection_enabled");
-            }
-            if (hasUnknownProtectionBehavior)
-            {
-                dropColumn(connection, "unknown_protection_behavior");
-            }
-            if (hasScanningBehavior)
-            {
-                dropColumn(connection, "scanning_behavior");
-            }
+                if (hasScanningEnabled && legacyLayout)
+                {
+                    dropColumn(connection, "scanning_enabled");
+                    hasScanningEnabled = false;
+                }
+                if (!hasScanningEnabled)
+                {
+                    try (Statement statement = connection.createStatement())
+                    {
+                        statement.execute("ALTER TABLE secretary_configuration "
+                                + "ADD COLUMN scanning_enabled INTEGER NOT NULL DEFAULT 0");
+                        LOGGER.info("Added missing column scanning_enabled to secretary_configuration; "
+                                + "content scanning is disabled for existing secretary users");
+                    }
+                }
+                if (hasUnknownProtectionEnabled)
+                {
+                    dropColumn(connection, "unknown_protection_enabled");
+                }
+                if (hasUnknownProtectionBehavior)
+                {
+                    dropColumn(connection, "unknown_protection_behavior");
+                }
+                if (hasScanningBehavior)
+                {
+                    dropColumn(connection, "scanning_behavior");
+                }
+                return null;
+            });
         }
-        catch (SQLException e)
+        catch (DatabaseException e)
         {
-            LOGGER.warn("Failed to migrate the secretary_configuration schema: {}", e.getMessage());
+            throw new IllegalStateException("Failed to migrate the secretary_configuration schema: " + e.getMessage(), e);
         }
     }
 
