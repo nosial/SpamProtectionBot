@@ -36,6 +36,7 @@ buttons:
   secretary_settings: "秘书设置"
   allow_contact: "允许联系"
   deny_contact: "拒绝联系"
+  report_message: "举报消息"
   enable: "启用"
   disable: "禁用"
   enable_notifications: "启用通知"
@@ -111,6 +112,7 @@ secretary:
   notification_action_notified: "<b>已处理：</b> 消息已保留在您的聊天中。使用下方按钮可允许或拒绝此联系人。\n"
   notification_action_deleted: "<b>已处理：</b> 消息已删除，联系人已自动拒绝。"
   settings_button: "秘书设置"
+  report_expired: "此消息已无法在此处举报。请将其转发给我以进行举报。"
 
 secretary_settings:
   title: "\U0001F464 <b>秘书设置</b>\n\n"

@@ -36,6 +36,7 @@ buttons:
   secretary_settings: "Ajustes de secretaría"
   allow_contact: "Permitir contacto"
   deny_contact: "Denegar contacto"
+  report_message: "Reportar mensaje"
   enable: "Habilitar"
   disable: "Deshabilitar"
   enable_notifications: "Habilitar notificaciones"
@@ -111,6 +112,7 @@ secretary:
   notification_action_notified: "<b>Procesado:</b> El mensaje se dejó en su chat. Use los botones a continuación para permitir o denegar este contacto.\n"
   notification_action_deleted: "<b>Procesado:</b> El mensaje fue eliminado y el contacto fue denegado automáticamente."
   settings_button: "Ajustes de secretaría"
+  report_expired: "Este mensaje ya no se puede reportar desde aquí. Reenvíemelo para reportarlo."
 
 secretary_settings:
   title: "\U0001F464 <b>Ajustes de secretaría</b>\n\n"

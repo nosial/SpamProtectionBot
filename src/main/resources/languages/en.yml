@@ -36,6 +36,7 @@ buttons:
   secretary_settings: "Secretary Settings"
   allow_contact: "Allow Contact"
   deny_contact: "Deny Contact"
+  report_message: "Report Message"
   enable: "Enable"
   disable: "Disable"
   enable_notifications: "Enable Notifications"
@@ -111,6 +112,7 @@ secretary:
   notification_action_notified: "<b>Handled:</b> The message was left in your chat. Use the buttons below to allow or deny this contact.\n"
   notification_action_deleted: "<b>Handled:</b> The message was deleted and the contact was denied automatically."
   settings_button: "Secretary Settings"
+  report_expired: "This message can no longer be reported from here. Forward it to me to report it instead."
 
 
 secretary_settings:
