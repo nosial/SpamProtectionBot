@@ -35,7 +35,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>The service owns one non-daemon thread. It remains idle while the {@code operators} table is
  * empty so operators authenticated after startup are picked up on the next interval. Federation
  * requests use a short-lived client authenticated with the individual operator's stored token;
- * the process-wide Federation client is never mutated.
+ * the process-wide Federation client is never mutated. When the server rejects an operator's token
+ * outright (unknown, or the operator is disabled), the stored credential is removed and the operator
+ * is told, rather than retrying a request that cannot succeed on every interval.
  */
 public final class NotificationService implements AutoCloseable
 {
@@ -157,6 +159,16 @@ public final class NotificationService implements AutoCloseable
         {
             reports = this.reportSource.openedReports(identity);
         }
+        catch (FederationException e)
+        {
+            if (FederationService.isCredentialRejected(e))
+            {
+                revokeOperator(telegramUserId, identity, e);
+                return;
+            }
+            LOGGER.warn("Unable to load opened reports for operator {}: {}", identity.operatorUuid(), e.getMessage());
+            return;
+        }
         catch (Exception e)
         {
             LOGGER.warn("Unable to load opened reports for operator {}: {}", identity.operatorUuid(), e.getMessage());
@@ -188,6 +200,47 @@ public final class NotificationService implements AutoCloseable
                 LOGGER.warn("Unable to send notification for report {} to Telegram user {}: {}",
                         report.uuid(), telegramUserId, e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Removes an operator credential the Federation server rejected and tells the operator, so the
+     * service stops sending the server requests it is certain to refuse.
+     *
+     * <p>The operator list is a cached snapshot, so the operator may have re-authenticated with a
+     * new token since it was taken; the credential is only removed while it is still the one that
+     * was rejected.
+     *
+     * @param telegramUserId the Telegram user ID of the operator
+     * @param identity the credential the server rejected
+     * @param cause the rejection
+     */
+    private void revokeOperator(long telegramUserId, OperatorIdentity identity, FederationException cause)
+    {
+        this.operatorStates.remove(telegramUserId);
+        try
+        {
+            if (!this.managers.operators().getOperator(telegramUserId).map(identity::equals).orElse(false))
+            {
+                return;
+            }
+            this.managers.operators().deleteOperator(telegramUserId);
+        }
+        catch (DatabaseException e)
+        {
+            LOGGER.warn("Unable to remove rejected credential for operator {}: {}", identity.operatorUuid(), e.getMessage());
+            return;
+        }
+
+        LOGGER.info("Removed credential for operator {} (Telegram user {}) after the Federation server rejected it: {}",
+                identity.operatorUuid(), telegramUserId, cause.getMessage());
+        try
+        {
+            this.notificationSink.sendCredentialRevoked(telegramUserId);
+        }
+        catch (Exception e)
+        {
+            LOGGER.warn("Unable to notify Telegram user {} that their credential was removed: {}", telegramUserId, e.getMessage());
         }
     }
 

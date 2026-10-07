@@ -12,4 +12,13 @@ public interface NotificationSink
      * @throws Exception if an error occurs during the sending process
      */
     void send(long telegramUserId, ReportRecord report) throws Exception;
+
+    /**
+     * Tells an operator that their stored credential was rejected by the Federation server and
+     * has been removed.
+     *
+     * @param telegramUserId the Telegram user ID of the recipient
+     * @throws Exception if an error occurs during the sending process
+     */
+    void sendCredentialRevoked(long telegramUserId) throws Exception;
 }

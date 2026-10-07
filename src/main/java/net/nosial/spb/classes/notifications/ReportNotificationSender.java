@@ -79,6 +79,17 @@ final class ReportNotificationSender implements NotificationSink
         sendEvidence(telegramUserId, notification, evidence, lang);
     }
 
+    @Override
+    public void sendCredentialRevoked(long telegramUserId) throws Exception
+    {
+        Language lang = this.managers.languagePreferences().getUserLanguage(telegramUserId);
+        this.telegramClient.execute(SendMessage.builder()
+                .chatId(String.valueOf(telegramUserId))
+                .text(NotificationFormatter.languageManager().get(lang, "authentication", "credential_revoked"))
+                .parseMode(ParseMode.HTML)
+                .build());
+    }
+
     /**
      * Sends each evidence record of the report as a reply to its notification, followed by the
      * record's file attachments as replies to the record, so the operator sees the report and its

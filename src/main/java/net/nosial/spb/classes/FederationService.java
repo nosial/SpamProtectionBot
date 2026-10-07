@@ -808,6 +808,29 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
+     * Returns whether a failure means the server rejected the access token itself, as opposed to
+     * being unreachable or failing for some other reason.
+     *
+     * <p>The server answers {@code 401} for a token it does not recognise and {@code 403} for one
+     * belonging to a disabled operator. Either way, retrying with the same token cannot succeed, so
+     * a caller holding a stored operator credential should discard it. A failure with no HTTP
+     * response (status {@code 0}) or any other status says nothing about the token.
+     *
+     * @param e the failure reported by an operator call
+     * @return {@code true} when the access token was rejected
+     */
+    public static boolean isCredentialRejected(FederationException e)
+    {
+        if (!(e.getCause() instanceof FederationClientException cause))
+        {
+            return false;
+        }
+
+        int status = cause.getStatusCode();
+        return status == 401 || status == 403;
+    }
+
+    /**
      * Returns whether a failure means "the server has no such record" rather than a real error.
      *
      * @param e the failure reported by the client
