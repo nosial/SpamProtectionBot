@@ -370,10 +370,27 @@ public final class ScanningHandler extends Handler
                 && !content.isBlank();
     }
 
+    /**
+     * Returns whether the message is a post from the chat's linked channel, which Telegram copies
+     * into the discussion group as an automatic forward.
+     *
+     * <p>These are the channel's own posts, not a member's message: Telegram attributes them to
+     * its service account, so without this check they would be scanned and that account queried
+     * as if it were a member. They are never scanned or moderated.
+     *
+     * @param message the incoming message
+     * @return {@code true} when the message is an automatic forward from the linked channel
+     */
+    static boolean isLinkedChannelPost(Message message)
+    {
+        return Boolean.TRUE.equals(message.getIsAutomaticForward());
+    }
+
     private static boolean shouldModerate(HandlerContext context, Message message, ChatConfiguration configuration)
     {
         String chatType = message.getChat().getType();
         if ((!chatType.equals("group") && !chatType.equals("supergroup"))
+                || isLinkedChannelPost(message)
                 || !configuration.enabled()
                 || !configuration.scanningEnabled()
                 || !context.federation().isAvailable())

@@ -82,4 +82,19 @@ class ScanningNotificationTest
                 "\"left_chat_member\":{\"id\":99,\"is_bot\":false,\"first_name\":\"Member\"},")));
         assertFalse(ScanningHandler.isMembershipServiceMessage(message("\"text\":\"hello\",")));
     }
+
+    @Test
+    @DisplayName("posts the linked channel forwards into the group are recognised and never scanned")
+    void linkedChannelPostsAreRecognised()
+    {
+        Message post = Updates.fromJson("""
+                {"update_id":1,"message":{"message_id":8,"date":1700000000,"text":"New post",
+                 "chat":{"id":-1003540281179,"type":"supergroup","title":"The Midnight Channel"},
+                 "from":{"id":777000,"is_bot":false,"first_name":"Telegram"},
+                 "sender_chat":{"id":-1001234567890,"type":"channel","title":"The Channel"},
+                 "is_automatic_forward":true}}""").getMessage();
+
+        assertTrue(ScanningHandler.isLinkedChannelPost(post));
+        assertFalse(ScanningHandler.isLinkedChannelPost(message("\"text\":\"hello\",")));
+    }
 }
