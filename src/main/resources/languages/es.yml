@@ -400,6 +400,7 @@ authentication:
   credential_store_failed: "<b>Error de autenticación</b>\n\nNo se pudo guardar su credencial. Por favor, inténtelo de nuevo."
   signed_out: "<b>Sesión cerrada</b>\n\nSu credencial almacenada de la Federación ha sido eliminada."
   signout_failed: "<b>Error al cerrar sesión</b>\n\nNo se pudo eliminar su credencial almacenada. Por favor, inténtelo de nuevo."
+  credential_revoked: "<b>Sesión cerrada</b>\n\nEl servidor de la Federación rechazó su token de acceso almacenado, por lo que ha sido eliminado y ya no recibirá notificaciones de reportes. Use <code>/auth &lt;access_token&gt;</code> para iniciar sesión de nuevo."
   authinfo_unavailable: "<b>Autenticación no disponible</b>\n\nSu credencial almacenada fue rechazada por el servidor de la Federación. Use <code>/auth</code> para actualizarla."
   not_authenticated: "No está autenticado. Use <code>/auth &lt;access_token&gt;</code> primero."
   operator_header: "<b>Autenticación de operador</b>\n\n"

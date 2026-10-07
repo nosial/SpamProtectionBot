@@ -400,6 +400,7 @@ authentication:
   credential_store_failed: "<b>Authentication Failed</b>\n\nCould not store your credential. Please try again."
   signed_out: "<b>Signed Out</b>\n\nYour stored Federation credential has been removed."
   signout_failed: "<b>Sign-out Failed</b>\n\nCould not remove your stored credential. Please try again."
+  credential_revoked: "<b>Signed Out</b>\n\nThe Federation server rejected your stored access token, so it has been removed and you will no longer receive report notifications. Use <code>/auth &lt;access_token&gt;</code> to sign in again."
   authinfo_unavailable: "<b>Authentication Unavailable</b>\n\nYour stored credential was rejected by the Federation server. Use <code>/auth</code> to update it."
   not_authenticated: "You are not authenticated. Use <code>/auth &lt;access_token&gt;</code> first."
   operator_header: "<b>Operator Authentication</b>\n\n"

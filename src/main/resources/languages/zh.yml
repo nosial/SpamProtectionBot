@@ -400,6 +400,7 @@ authentication:
   credential_store_failed: "<b>身份验证失败</b>\n\n无法存储您的凭据。请再试一次。"
   signed_out: "<b>已注销</b>\n\n您存储的联邦凭据已被移除。"
   signout_failed: "<b>注销失败</b>\n\n无法移除您存储的凭据。请再试一次。"
+  credential_revoked: "<b>已注销</b>\n\n联邦服务器拒绝了您存储的访问令牌，因此该令牌已被移除，您将不再收到举报通知。使用 <code>/auth &lt;access_token&gt;</code> 重新登录。"
   authinfo_unavailable: "<b>身份验证不可用</b>\n\n您存储的凭据被联邦服务器拒绝。使用 <code>/auth</code> 进行更新。"
   not_authenticated: "您尚未通过身份验证。请先使用 <code>/auth &lt;access_token&gt;</code>。"
   operator_header: "<b>操作员身份验证</b>\n\n"
