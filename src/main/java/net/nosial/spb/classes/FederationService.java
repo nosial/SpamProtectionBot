@@ -54,21 +54,23 @@ import java.util.function.Supplier;
  * operator's own {@code /auth} session, which carries its own access token through each call and is
  * unaffected by the bot's own authentication state.
  *
+ * <p>Only a definitive answer about the token settles it: a token the server rejects, or one that
+ * identifies an operator without client permissions, is discarded and the service carries on as an
+ * anonymous client. A server that is unreachable or failing says nothing about the token, so it is
+ * kept and authentication stays {@linkplain #isAuthenticationPending() pending} until a later
+ * {@link #authenticate()} gets an answer.
+ *
  * <p>Instances are shared between worker threads and are thread-safe.
  */
 public final class FederationService implements AutoCloseable
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(FederationService.class);
-
-    /** The single instance used when no Federation server is configured; it holds no state. */
+    private static final int BLACKLIST_PAGE_SIZE = 5;
     public static final FederationService UNAVAILABLE = new FederationService();
 
-    /** How many blacklist records are read for an entity before the rest are ignored. */
-    private static final int BLACKLIST_PAGE_SIZE = 5;
-
     private final String endpoint;
-    private final String accessToken;
-    private final FederationClient client;
+    private volatile String accessToken;
+    private volatile FederationClient client;
     private volatile boolean authenticated;
 
     /** Creates the unavailable instance; see {@link #UNAVAILABLE}. */
@@ -140,27 +142,75 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
+     * Returns whether the bot has an access token whose standing the server has not yet settled,
+     * so {@link #authenticate()} is worth calling again.
+     *
+     * <p>This is the case before the first {@link #authenticate()} and after any attempt that failed
+     * without the server answering for the token, typically because it was unreachable. It is
+     * {@code false} once the token is known to grant client permissions, once it has been discarded,
+     * and when no token was configured.
+     *
+     * @return {@code true} when authentication should be retried
+     */
+    public boolean isAuthenticationPending()
+    {
+        String token = this.accessToken;
+        return this.client != null && token != null && !token.isBlank() && !this.authenticated;
+    }
+
+    /**
      * Identifies the operator the bot's own access token belongs to and records whether it grants
      * client permissions, for later {@link #isAuthenticated()} checks.
      *
-     * <p>Meant to be called once, right after construction: the identity a token resolves to does
-     * not change over the process lifetime, so there is nothing to gain from re-checking per call
-     * the way {@link #isAvailable()} deliberately does not cache reachability.
+     * <p>A token the server rejects or that lacks client permissions is discarded, and every later
+     * call is made anonymously. Any other failure leaves the token in place and authentication
+     * {@linkplain #isAuthenticationPending() pending}, so a server that was down when this was
+     * called can be authenticated against once it is back.
      *
-     * @return the identified operator, or {@code null} when Federation is not configured or no
-     *         access token was given (an anonymous client has nothing to identify)
-     * @throws FederationException If a token was configured but the server rejected it
+     * @return the identified operator, or {@code null} when Federation is not configured or there is
+     *         no access token (an anonymous client has nothing to identify)
+     * @throws FederationException If the server could not be reached or rejected the token
      */
-    public OperatorRecord authenticate() throws FederationException
+    public synchronized OperatorRecord authenticate() throws FederationException
     {
-        if (this.client == null || this.accessToken == null || this.accessToken.isBlank())
+        if (!isAuthenticationPending() && !this.authenticated)
         {
             return null;
         }
 
-        OperatorRecord operator = self();
+        OperatorRecord operator;
+        try
+        {
+            operator = self();
+        }
+        catch (FederationException e)
+        {
+            if (isCredentialRejected(e))
+            {
+                discardAccessToken();
+            }
+            throw e;
+        }
+
         this.authenticated = operator.clientPermissions() || operator.managementPermissions();
+        if (!this.authenticated)
+        {
+            discardAccessToken();
+        }
         return operator;
+    }
+
+    /**
+     * Replaces the client with an anonymous one, since a token without client permissions is held
+     * to a stricter standard than no token at all.
+     */
+    private void discardAccessToken()
+    {
+        FederationClient previous = this.client;
+        this.client = new FederationClient(this.endpoint, null);
+        this.accessToken = null;
+        this.authenticated = false;
+        previous.close();
     }
 
     /**
