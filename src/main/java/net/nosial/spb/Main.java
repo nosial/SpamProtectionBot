@@ -27,10 +27,14 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public final class Main implements AutoCloseable
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final Duration FEDERATION_AUTHENTICATION_RETRY = Duration.ofSeconds(30);
 
     private final Configuration configuration;
     private final Path databasePath;
@@ -41,6 +45,7 @@ public final class Main implements AutoCloseable
     private TelegramBot bot;
     private UpdateDispatcher dispatcher;
     private NotificationService notifications;
+    private ScheduledExecutorService federationAuthentication;
     private volatile boolean started;
     private volatile boolean closed;
 
@@ -163,6 +168,11 @@ public final class Main implements AutoCloseable
 
         HandlerRegistry registry = new HandlerRegistry();
         this.federation = connectFederation();
+        if (this.federation.isAuthenticationPending())
+        {
+            scheduleFederationAuthentication();
+        }
+
         this.bot = new TelegramBot(this.configuration);
         this.bot.authenticate();
 
@@ -221,6 +231,11 @@ public final class Main implements AutoCloseable
             this.bot.stopPolling();
         }
 
+        if (this.federationAuthentication != null)
+        {
+            this.federationAuthentication.shutdownNow();
+        }
+
         if (this.notifications != null)
         {
             try
@@ -266,7 +281,8 @@ public final class Main implements AutoCloseable
      *
      * <p>An unreachable server is a warning, not a failure: the bot moderates, configures itself,
      * and answers commands without Federation, and the features that need it report themselves
-     * unavailable until it comes back.
+     * unavailable until it comes back. Authentication is then left pending for
+     * {@link #scheduleFederationAuthentication()} to retry.
      *
      * @return the Federation service, never {@code null}
      */
@@ -295,25 +311,6 @@ public final class Main implements AutoCloseable
             return service;
         }
 
-        return authenticateFederation(service);
-    }
-
-    /**
-     * Confirms the bot's own access token carries client permissions, downgrading to an anonymous
-     * connection when it does not.
-     *
-     * <p>The server holds an authenticated-but-unprivileged token to a stricter standard than no
-     * token at all: several calls an anonymous client may be allowed are refused outright to one
-     * that identifies an operator without client permissions. A token that does not clear that bar
-     * is therefore worse than none, so rather than keep it, the bot reconnects anonymously and is
-     * treated exactly like a host that never configured a token — see {@link FederationService}.
-     *
-     * @param service the connected service, still carrying whatever access token was configured
-     * @return {@code service} unchanged when no token was configured or it carries client
-     *         permissions, otherwise a freshly connected anonymous replacement
-     */
-    private FederationService authenticateFederation(FederationService service)
-    {
         String accessToken = this.configuration.getFederationAccessToken();
         if (accessToken == null || accessToken.isBlank())
         {
@@ -321,24 +318,85 @@ public final class Main implements AutoCloseable
             return service;
         }
 
+        authenticateFederation(service, false);
+        return service;
+    }
+
+    /**
+     * Retries authentication in the background until the server settles the bot's own access token,
+     * so a Federation server that was down at startup, or went down mid-authentication, is
+     * authenticated against as soon as it is reachable again rather than never.
+     */
+    private void scheduleFederationAuthentication()
+    {
+        LOGGER.info("Federation authentication is pending; retrying every {} second(s) until the server answers", FEDERATION_AUTHENTICATION_RETRY.toSeconds());
+
+        this.federationAuthentication = Executors.newSingleThreadScheduledExecutor(task ->
+        {
+            Thread thread = new Thread(task, "federation-authentication");
+            thread.setDaemon(true);
+            return thread;
+        });
+
+        long delay = FEDERATION_AUTHENTICATION_RETRY.toMillis();
+        this.federationAuthentication.scheduleWithFixedDelay(() ->
+        {
+            if (!this.federation.isAuthenticationPending())
+            {
+                this.federationAuthentication.shutdown();
+                return;
+            }
+
+            authenticateFederation(this.federation, true);
+        }, delay, delay, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Confirms the bot's own access token carries client permissions, logging the outcome.
+     *
+     * <p>The server holds an authenticated-but-unprivileged token to a stricter standard than no
+     * token at all: several calls an anonymous client may be allowed are refused outright to one
+     * that identifies an operator without client permissions. {@link FederationService#authenticate()}
+     * therefore discards a token that does not clear that bar, or that the server rejects, and the
+     * bot is treated exactly like a host that never configured one. A failure that says nothing about
+     * the token leaves authentication pending.
+     *
+     * @param service the service to authenticate
+     * @param retrying whether this is a background retry, whose repeated connection failures are
+     *                 logged quietly so an outage does not flood the log
+     */
+    private void authenticateFederation(FederationService service, boolean retrying)
+    {
         try
         {
             OperatorRecord operator = service.authenticate();
-            if (service.isAuthenticated())
+            if (operator == null)
             {
-                LOGGER.info("Authenticated with Federation as operator '{}' with client permissions", Objects.requireNonNull(operator).name());
-                return service;
+                return;
             }
 
-            LOGGER.warn("Federation access token belongs to operator '{}' but lacks client permissions; " + "continuing as an anonymous client so publicly available features keep working", Objects.requireNonNull(operator).name());
+            if (service.isAuthenticated())
+            {
+                LOGGER.info("Authenticated with Federation as operator '{}' with client permissions", operator.name());
+                return;
+            }
+
+            LOGGER.warn("Federation access token belongs to operator '{}' but lacks client permissions; " + "continuing as an anonymous client so publicly available features keep working", operator.name());
         }
         catch (FederationException e)
         {
-            LOGGER.warn("Federation access token was rejected ({}); continuing as an anonymous client",
-                    e.getMessage());
+            if (FederationService.isCredentialRejected(e))
+            {
+                LOGGER.warn("Federation access token was rejected ({}); continuing as an anonymous client", e.getMessage());
+            }
+            else if (retrying)
+            {
+                LOGGER.debug("Federation authentication is still pending: {}", e.getMessage());
+            }
+            else
+            {
+                LOGGER.warn("Could not authenticate with Federation ({}); will retry", e.getMessage());
+            }
         }
-
-        service.close();
-        return new FederationService(this.configuration.getFederationEndpoint(), null);
     }
 }
