@@ -165,6 +165,19 @@ class FederationServiceTest
                     () -> this.anonymous.uploadAttachment(null, "uuid", "/tmp/f", "f"));
             assertTrue(e.getMessage().contains("client permissions"), e.getMessage());
         }
+
+        @Test
+        @DisplayName("an unreachable server keeps the token and leaves authentication pending for a retry")
+        void unreachableServerKeepsAuthenticationPending()
+        {
+            FederationService service = new FederationService("http://127.0.0.1:1/", "token");
+            assertTrue(service.isAuthenticationPending());
+
+            assertThrows(FederationException.class, service::authenticate);
+
+            assertFalse(service.isAuthenticated());
+            assertTrue(service.isAuthenticationPending());
+        }
     }
 
 }
