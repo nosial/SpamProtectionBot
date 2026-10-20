@@ -175,15 +175,15 @@ public final class PingHandler extends Handler
     {
         LanguageManager lm = context.languages();
         List<String> granted = new ArrayList<>();
-        if (operator.clientPermissions())
+        if (operator.hasClientPermissions())
         {
             granted.add(lm.get(lang, "ping", "permission_client"));
         }
-        if (operator.managementPermissions())
+        if (operator.hasManagementPermissions())
         {
             granted.add(lm.get(lang, "ping", "permission_management"));
         }
-        if (operator.operatorPermissions())
+        if (operator.hasOperatorPermissions())
         {
             granted.add(lm.get(lang, "ping", "permission_operator"));
         }
