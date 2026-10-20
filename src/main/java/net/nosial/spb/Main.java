@@ -35,6 +35,7 @@ public final class Main implements AutoCloseable
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
     private static final Duration FEDERATION_AUTHENTICATION_RETRY = Duration.ofSeconds(30);
+    private static final int SUPPORTED_FEDERATION_API_MAJOR_VERSION = 2;
 
     private final Configuration configuration;
     private final Path databasePath;
@@ -303,6 +304,11 @@ public final class Main implements AutoCloseable
             LOGGER.info("Connected to Federation server '{}' (API {}) with {} known entities and {} blacklist records",
                     information.serverName(), information.apiVersion(), information.knownEntities(),
                     information.blacklistRecords());
+            if (information.getApiMajorVersion() != SUPPORTED_FEDERATION_API_MAJOR_VERSION)
+            {
+                LOGGER.warn("Federation server reports API version '{}', but this bot implements OFD {}.x; requests may fail or be misread",
+                        information.apiVersion(), SUPPORTED_FEDERATION_API_MAJOR_VERSION);
+            }
         }
         catch (FederationException e)
         {
@@ -354,11 +360,9 @@ public final class Main implements AutoCloseable
     /**
      * Confirms the bot's own access token carries client permissions, logging the outcome.
      *
-     * <p>The server holds an authenticated-but-unprivileged token to a stricter standard than no
-     * token at all: several calls an anonymous client may be allowed are refused outright to one
-     * that identifies an operator without client permissions. {@link FederationService#authenticate()}
-     * therefore discards a token that does not clear that bar, or that the server rejects, and the
-     * bot is treated exactly like a host that never configured one. A failure that says nothing about
+     * <p>Every write the bot makes as itself requires client permissions, so a token without them,
+     * or one the server rejects, is of no use to the bot. {@link FederationService#authenticate()}
+     * therefore discards it, and the bot is treated exactly like a host that never configured one. A failure that says nothing about
      * the token leaves authentication pending.
      *
      * @param service the service to authenticate
