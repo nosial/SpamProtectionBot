@@ -44,10 +44,9 @@ import java.util.function.Supplier;
  *
  * <p>A server accepts an anonymous client for whatever it has marked public, but every write and
  * some reads require an authenticated one — and, server-side, that bar is not "a token was sent"
- * but {@link OperatorRecord#clientPermissions() client permissions}: a token that identifies a
- * disabled operator or one with no client permissions is, for every practical purpose, worse than
- * no token at all, since the server holds it to the authenticated standard without it clearing that
- * standard. {@link #authenticate()} is how the bot finds out which side of that line its own token
+ * but {@link OperatorRecord#hasClientPermissions() client permissions}: a token that identifies a
+ * disabled operator or one with no client permissions gives the bot nothing it would not have
+ * anonymously. {@link #authenticate()} is how the bot finds out which side of that line its own token
  * falls on, and {@link #isAuthenticated()} is what callers that only make sense as the bot itself —
  * publishing an entity, submitting a report as the bot rather than an operator — check first, so
  * those features are skipped rather than attempted and rejected. This is unrelated to an
@@ -192,7 +191,7 @@ public final class FederationService implements AutoCloseable
             throw e;
         }
 
-        this.authenticated = operator.clientPermissions() || operator.managementPermissions();
+        this.authenticated = operator.hasClientPermissions();
         if (!this.authenticated)
         {
             discardAccessToken();
@@ -201,8 +200,8 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
-     * Replaces the client with an anonymous one, since a token without client permissions is held
-     * to a stricter standard than no token at all.
+     * Replaces the client with an anonymous one, since a token without client permissions grants the
+     * bot nothing its own features need, and settles authentication so it is not retried.
      */
     private void discardAccessToken()
     {
