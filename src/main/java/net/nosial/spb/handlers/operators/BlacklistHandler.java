@@ -398,7 +398,7 @@ public final class BlacklistHandler extends Handler
         {
             return argument;
         }
-        if (argument.contains("@"))
+        if (argument.indexOf("@") > 0)
         {
             return argument;
         }
