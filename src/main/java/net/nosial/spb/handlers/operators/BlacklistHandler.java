@@ -527,11 +527,11 @@ public final class BlacklistHandler extends Handler
      *
      * @param entityIdentifier the entity to blacklist
      * @param targetAuthor the replied-to author being blacklisted, or {@code null} for an explicit identifier
-     * @param reportUuid the supporting report UUID, or {@code null} to create one
+     * @param reportUuid the supporting report UUID, or {@code null} to create one only for a replied-to author
      * @param incidentType the incident type of the blacklist
      * @param expirationSeconds the expiration duration in seconds, added to the current time
      */
-    private record BlacklistRequest(String entityIdentifier, User targetAuthor, String reportUuid, IncidentType incidentType, long expirationSeconds)
+    record BlacklistRequest(String entityIdentifier, User targetAuthor, String reportUuid, IncidentType incidentType, long expirationSeconds)
     {
     }
 }
