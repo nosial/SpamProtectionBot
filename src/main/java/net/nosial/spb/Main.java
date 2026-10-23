@@ -389,7 +389,7 @@ public final class Main implements AutoCloseable
         }
         catch (FederationException e)
         {
-            if (FederationService.isCredentialRejected(e))
+            if (!service.isAuthenticationPending() && FederationService.isCredentialRejected(e))
             {
                 LOGGER.warn("Federation access token was rejected ({}); continuing as an anonymous client", e.getMessage());
             }
