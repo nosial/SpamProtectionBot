@@ -182,6 +182,10 @@ configuration:
     description: "根据联邦系统的建议检查每位成员的消息，以防范垃圾信息、网络钓鱼、恶意软件和其他威胁。机器人的响应方式取决于您选择的行为模式。\n\n"
     privacy_mode_note: "扫描仅发送消息文本或附言。它不会公布发送者或查询发送者的联邦记录。"
     status: "<b>状态：</b> {0}"
+    block_ads_trackers: "<b>拦截广告和跟踪器:</b> {0}"
+    block_ads_trackers_description: "根据联邦服务器支持的类别，额外检查消息中的广告和跟踪内容。默认启用。"
+    enable_ads_trackers: "启用广告和跟踪器拦截"
+    disable_ads_trackers: "禁用广告和跟踪器拦截"
     level: "<b>级别：</b> {0}"
     notifications: "<b>通知：</b> {0}"
     notifications_unavailable: "<b>通知：</b> 不可用 \u2014 请启用管理员通知或关联聊天"
@@ -263,6 +267,9 @@ info:
   report_entry: "\u2022 {0} \u2014 {1} ({2}) <code>{3}</code>\n"
 
 evidence:
+  automated: "<b>自动生成:</b> {0}"
+  content_type: "<b>内容类型:</b> {0}"
+  context: "<b>上下文:</b> {0}"
   usage: "用法：<code>/evidence &lt;uuid&gt;</code>"
   query_error: "无法查询证据记录。"
   not_found: "没有与 <code>{0}</code> 匹配的证据。"
@@ -375,7 +382,7 @@ blacklist:
   regular_group_note: "\n\n<i>回复了某条消息？在普通群组中，Telegram 不会向我显示对我加入之前所发消息的回复。请回复一条较新的消息，或将群组升级为超级群组。</i>"
   federation_not_configured: "黑名单功能不可用，因为未配置联邦。"
   operator_only: "此命令仅对已认证的操作员可用。请先使用 <code>/auth &lt;access_token&gt;</code>。"
-  usage: "<b>用法</b>\n\n<code>/blacklist &lt;identifier&gt; &lt;report_uuid&gt; &lt;type&gt; &lt;expires&gt;</code> — 针对现有举报拉黑某个实体。\n回复一条消息并发送 <code>/blacklist &lt;report_uuid&gt; &lt;type&gt; &lt;expires&gt;</code>，针对现有举报拉黑消息作者。\n回复一条消息并发送 <code>/blacklist &lt;type&gt; &lt;expires&gt;</code>，创建支持性举报并拉黑消息作者。\n\n<code>expires</code> 接收带有单位后缀的时长（<code>s</code>、<code>m</code>、<code>h</code> 或 <code>d</code>；纯数字默认为秒），例如 <code>30d</code> 或 <code>12h</code>。"
+  usage: "<b>用法</b>\n\n<code>/blacklist &lt;identifier&gt; &lt;report_uuid&gt; &lt;type&gt; &lt;expires&gt;</code> — 针对现有举报拉黑某个实体。\n回复一条消息并发送 <code>/blacklist &lt;report_uuid&gt; &lt;type&gt; &lt;expires&gt;</code>，针对现有举报拉黑消息作者。\n回复一条消息并发送 <code>/blacklist &lt;type&gt; &lt;expires&gt;</code>，创建支持性举报并拉黑消息作者。\n\n<code>expires</code> 接收带有单位后缀的时长（<code>s</code>、<code>m</code>、<code>h</code> 或 <code>d</code>；纯数字默认为秒），例如 <code>30d</code> 或 <code>12h</code>。\n\n不回复消息时，使用 <code>/blacklist &lt;identifier&gt; &lt;type&gt; &lt;expires&gt;</code> 可在不创建举报的情况下加入黑名单。"
   invalid_type: "未知的违规类型 <code>{0}</code>。"
   invalid_expires: "无效的到期时间 <code>{0}</code>。请使用如 <code>30d</code>、<code>12h</code> 或 <code>45m</code> 等时长格式。"
   invalid_report: "无效的举报 UUID <code>{0}</code>。"
@@ -415,7 +422,8 @@ authentication:
   permission_client: "客户端：{0}"
   permission_operator: "操作员管理：{0}"
   permission_management: "服务器管理：{0}"
-  permission_auto_assign: "自动分配：{0}"
+  permission_auto_assign: "自动分配举报：{0}"
+  permission_auto_assign_automated: "自动分配自动化举报：{0}"
 
 ping:
   bot_status: "<b>状态：</b> <code>{0}</code>\n"

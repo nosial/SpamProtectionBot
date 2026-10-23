@@ -226,10 +226,11 @@ public final class AuthenticationHandler extends Handler
                 + context.languages().get(lang, "authentication", "uuid", HtmlEscape.escape(operator.uuid())) + "\n"
                 + context.languages().get(lang, "authentication", operator.disabled() ? "status_disabled" : "status_active") + "\n\n"
                 + context.languages().get(lang, "authentication", "permissions_header")
-                + context.languages().get(lang, "authentication", "permission_client", permission(context, lang, operator.clientPermissions())) + "\n"
-                + context.languages().get(lang, "authentication", "permission_operator", permission(context, lang, operator.operatorPermissions())) + "\n"
-                + context.languages().get(lang, "authentication", "permission_management", permission(context, lang, operator.managementPermissions())) + "\n"
-                + context.languages().get(lang, "authentication", "permission_auto_assign", permission(context, lang, operator.autoAssign()));
+                + context.languages().get(lang, "authentication", "permission_client", permission(context, lang, operator.hasClientPermissions())) + "\n"
+                + context.languages().get(lang, "authentication", "permission_operator", permission(context, lang, operator.hasOperatorPermissions())) + "\n"
+                + context.languages().get(lang, "authentication", "permission_management", permission(context, lang, operator.hasManagementPermissions())) + "\n"
+                + context.languages().get(lang, "authentication", "permission_auto_assign", permission(context, lang, operator.isAutoAssignReports())) + "\n"
+                + context.languages().get(lang, "authentication", "permission_auto_assign_automated", permission(context, lang, operator.isAutoAssignAutomatedReports()));
     }
 
     /**

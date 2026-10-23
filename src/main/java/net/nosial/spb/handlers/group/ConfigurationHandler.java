@@ -289,6 +289,12 @@ public final class ConfigurationHandler extends Handler
                     page = ConfigurationPage.MAIN;
                 }
             }
+            case "toggle_ads_trackers" ->
+            {
+                updateConfiguration(context, chatId,
+                        manager -> manager.setBlockAdsTrackers(chatId, !configuration.blockAdsTrackers()));
+                page = ConfigurationPage.SCANNING;
+            }
             case "toggle_scanning_notifications" ->
             {
                 boolean enabled = !configuration.scanningNotificationsEnabled();
@@ -813,6 +819,9 @@ public final class ConfigurationHandler extends Handler
         html.append(lm.get(lang, "configuration", "scanning.status", status(lm, lang, configuration.scanningEnabled()))).append("\n\n");
         if (configuration.scanningEnabled())
         {
+            html.append(lm.get(lang, "configuration", "scanning.block_ads_trackers",
+                    status(lm, lang, configuration.blockAdsTrackers()))).append("\n\n");
+            html.append(lm.get(lang, "configuration", "scanning.block_ads_trackers_description")).append("\n\n");
             html.append(lm.get(lang, "configuration", "scanning.level", scanningLevel(lm, lang, configuration.scanningBehavior()))).append("\n\n");
             html.append(notificationAvenueAvailable(configuration)
                     ? lm.get(lang, "configuration", "scanning.notifications",
@@ -843,6 +852,9 @@ public final class ConfigurationHandler extends Handler
                 "toggle_scanning", lm.get(lang, "buttons", "disable"))));
         if (configuration.scanningEnabled())
         {
+            rows.add(new InlineKeyboardRow(toggleButton(session, configuration.blockAdsTrackers(),
+                    "toggle_ads_trackers", lm.get(lang, "configuration", "scanning.enable_ads_trackers"),
+                    "toggle_ads_trackers", lm.get(lang, "configuration", "scanning.disable_ads_trackers"))));
             List<InlineKeyboardButton> behaviorButtons = new ArrayList<>();
             for (ScanningBehavior behavior : ScanningBehavior.values())
             {

@@ -12,6 +12,7 @@ import net.nosial.jfederation.records.EntityRecord;
 import net.nosial.jfederation.records.EvidenceRecord;
 import net.nosial.jfederation.records.FileAttachmentRecord;
 import net.nosial.jfederation.records.OperatorRecord;
+import net.nosial.jfederation.records.OperatorConfiguration;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
 import net.nosial.jfederation.records.ScannedContent;
@@ -21,10 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -44,31 +47,34 @@ import java.util.function.Supplier;
  *
  * <p>A server accepts an anonymous client for whatever it has marked public, but every write and
  * some reads require an authenticated one — and, server-side, that bar is not "a token was sent"
- * but {@link OperatorRecord#clientPermissions() client permissions}: a token that identifies a
- * disabled operator or one with no client permissions is, for every practical purpose, worse than
- * no token at all, since the server holds it to the authenticated standard without it clearing that
- * standard. {@link #authenticate()} is how the bot finds out which side of that line its own token
+ * but {@link OperatorRecord#hasClientPermissions() client permissions}: a token that identifies a
+ * disabled operator or one with no client permissions gives the bot nothing it would not have
+ * anonymously. {@link #authenticate()} is how the bot finds out which side of that line its own token
  * falls on, and {@link #isAuthenticated()} is what callers that only make sense as the bot itself —
  * publishing an entity, submitting a report as the bot rather than an operator — check first, so
  * those features are skipped rather than attempted and rejected. This is unrelated to an
  * operator's own {@code /auth} session, which carries its own access token through each call and is
  * unaffected by the bot's own authentication state.
  *
+ * <p>Only a definitive answer about the token settles it: a token the server rejects, or one that
+ * identifies an operator without client permissions, is discarded and the service carries on as an
+ * anonymous client. A server that is unreachable or failing says nothing about the token, so it is
+ * kept and authentication stays {@linkplain #isAuthenticationPending() pending} until a later
+ * {@link #authenticate()} gets an answer.
+ *
  * <p>Instances are shared between worker threads and are thread-safe.
  */
 public final class FederationService implements AutoCloseable
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(FederationService.class);
-
-    /** The single instance used when no Federation server is configured; it holds no state. */
+    private static final int BLACKLIST_PAGE_SIZE = 5;
     public static final FederationService UNAVAILABLE = new FederationService();
 
-    /** How many blacklist records are read for an entity before the rest are ignored. */
-    private static final int BLACKLIST_PAGE_SIZE = 5;
+    private final Cache<String, ServerInformation> scanCapabilities = Cache.create(1, 5, TimeUnit.MINUTES);
 
     private final String endpoint;
-    private final String accessToken;
-    private final FederationClient client;
+    private volatile String accessToken;
+    private volatile FederationClient client;
     private volatile boolean authenticated;
 
     /** Creates the unavailable instance; see {@link #UNAVAILABLE}. */
@@ -140,27 +146,94 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
+     * Returns whether the bot has an access token whose standing the server has not yet settled,
+     * so {@link #authenticate()} is worth calling again.
+     *
+     * <p>This is the case before the first {@link #authenticate()} and after any attempt that failed
+     * without the server answering for the token, typically because it was unreachable. It is
+     * {@code false} once the token is known to grant client permissions, once it has been discarded,
+     * and when no token was configured.
+     *
+     * @return {@code true} when authentication should be retried
+     */
+    public boolean isAuthenticationPending()
+    {
+        String token = this.accessToken;
+        return this.client != null && token != null && !token.isBlank() && !this.authenticated;
+    }
+
+    /**
      * Identifies the operator the bot's own access token belongs to and records whether it grants
      * client permissions, for later {@link #isAuthenticated()} checks.
      *
-     * <p>Meant to be called once, right after construction: the identity a token resolves to does
-     * not change over the process lifetime, so there is nothing to gain from re-checking per call
-     * the way {@link #isAvailable()} deliberately does not cache reachability.
+     * <p>A token the server rejects or that lacks client permissions is discarded, and every later
+     * call is made anonymously. Any other failure leaves the token in place and authentication
+     * {@linkplain #isAuthenticationPending() pending}, so a server that was down when this was
+     * called can be authenticated against once it is back.
      *
-     * @return the identified operator, or {@code null} when Federation is not configured or no
-     *         access token was given (an anonymous client has nothing to identify)
-     * @throws FederationException If a token was configured but the server rejected it
+     * @return the identified operator, or {@code null} when Federation is not configured or there is
+     *         no access token (an anonymous client has nothing to identify)
+     * @throws FederationException If the server could not be reached or rejected the token
      */
-    public OperatorRecord authenticate() throws FederationException
+    public synchronized OperatorRecord authenticate() throws FederationException
     {
-        if (this.client == null || this.accessToken == null || this.accessToken.isBlank())
+        if (!isAuthenticationPending() && !this.authenticated)
         {
             return null;
         }
 
-        OperatorRecord operator = self();
-        this.authenticated = operator.clientPermissions() || operator.managementPermissions();
+        OperatorRecord operator;
+        try
+        {
+            operator = self();
+        }
+        catch (FederationException e)
+        {
+            if (isCredentialRejected(e))
+            {
+                discardAccessToken();
+            }
+            throw e;
+        }
+
+        this.authenticated = false;
+        if (operator.disabled() || !operator.hasClientPermissions())
+        {
+            discardAccessToken();
+            return operator;
+        }
+
+        if (!operator.isBot())
+        {
+            if ("root".equalsIgnoreCase(operator.name()) || "system".equalsIgnoreCase(operator.name()))
+            {
+                throw new FederationException("SpamProtectionBot requires a dedicated Federation operator with client permissions; root and system cannot be configured as bots");
+            }
+            String uuid = operator.uuid();
+            OperatorConfiguration configuration = call("mark the Federation operator as a bot",
+                    () -> this.client.updateOperatorConfiguration(uuid, null, null, true));
+            if (configuration == null || !configuration.isBot())
+            {
+                throw new FederationException("Federation did not confirm the bot operator configuration");
+            }
+            operator = new OperatorRecord(operator.uuid(), operator.name(), operator.disabled(),
+                    operator.permissions(), configuration, operator.created(), operator.updated());
+        }
+        this.authenticated = true;
         return operator;
+    }
+
+    /**
+     * Replaces the client with an anonymous one, since a token without client permissions grants the
+     * bot nothing its own features need, and settles authentication so it is not retried.
+     */
+    private void discardAccessToken()
+    {
+        FederationClient previous = this.client;
+        this.client = new FederationClient(this.endpoint, null);
+        this.accessToken = null;
+        this.authenticated = false;
+        previous.close();
     }
 
     /**
@@ -351,6 +424,53 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
+     * Scans content with the server's usual concerns, optionally adding ads and trackers.
+     * Only advertised concerns are added, so servers without these optional types still scan
+     * normally. Capabilities are cached briefly to avoid an information request for every message.
+     *
+     * @param content the content to scan
+     * @param entity the author entity, or {@code null} to scan anonymously
+     * @param blockAdsTrackers whether to include advertising and tracking concerns
+     * @return the scan result and its suggested action
+     * @throws FederationException If the server is unavailable or rejected the call
+     */
+    public ScannedContent scanContent(ContentInput content, String entity, boolean blockAdsTrackers) throws FederationException
+    {
+        if (!blockAdsTrackers)
+        {
+            return scanContent(content, entity);
+        }
+        requireAvailable();
+        Objects.requireNonNull(content, "content must not be null");
+
+        ServerInformation information;
+        try
+        {
+            information = call("read scan capabilities",
+                    () -> this.scanCapabilities.get("info", ignored -> this.client.getServerInformation()));
+        }
+        catch (FederationException e)
+        {
+            LOGGER.warn("Unable to read advertising and tracking scan capabilities; scanning with server defaults: {}",
+                    e.getMessage());
+            return scanContent(content, entity);
+        }
+
+        return call("scan content", () ->
+        {
+            List<IncidentType> concerns = new ArrayList<>(information.defaultConcerns());
+            for (IncidentType concern : List.of(IncidentType.ADVERTISING, IncidentType.TRACKING))
+            {
+                if (information.concerns().contains(concern) && !concerns.contains(concern))
+                {
+                    concerns.add(concern);
+                }
+            }
+            return this.client.scanContent(content, entity, null, null, concerns.isEmpty() ? null : concerns);
+        });
+    }
+
+    /**
      * Returns the blacklist records currently active against an entity.
      *
      * @param entity the entity address or UUID
@@ -366,13 +486,13 @@ public final class FederationService implements AutoCloseable
     }
 
     /**
-     * Blacklists an entity against an existing report.
+     * Blacklists an entity, optionally referencing an existing report.
      *
      * @param accessToken the operator's access token, or {@code null} to act as the bot
      * @param entity the entity to blacklist
-     * @param report the UUID of the supporting report
+     * @param report the UUID of the supporting report, or {@code null} for none
      * @param type the incident type
-     * @param expiresInSeconds how long the blacklist lasts, or {@code null} for permanent
+     * @param expiresInSeconds expiration Unix timestamp in seconds, or {@code null} for permanent
      * @return the UUID of the created blacklist record
      * @throws FederationException If the server is unavailable or rejected the call
      */
@@ -466,7 +586,7 @@ public final class FederationService implements AutoCloseable
         requireAvailable();
         Objects.requireNonNull(accessToken, "accessToken must not be null");
 
-        List<ReportRecord> reports = asOperator(accessToken, "list open reports", operator -> operator.listOpenedReports(1, limit, "created", "ASC"));
+        List<ReportRecord> reports = asOperator(accessToken, "list open reports", operator -> operator.listOpenedReports(1, limit, "CREATED", "ASC"));
         return reports != null ? reports : List.of();
     }
 
@@ -838,13 +958,6 @@ public final class FederationService implements AutoCloseable
      */
     private static boolean isNotFound(FederationClientException e)
     {
-        String message = e.getMessage();
-        if (message == null)
-        {
-            return false;
-        }
-
-        String lower = message.toLowerCase();
-        return lower.contains("404") || lower.contains("not found") || lower.contains("does not exist");
+        return e.getStatusCode() == 404;
     }
 }

@@ -146,7 +146,8 @@ public final class ScanningHandler extends Handler
             {
                 scannedContent = context.federation().scanContent(
                         MessageContent.buildScanInput(message, configuration.privacyMode()),
-                        configuration.privacyMode() ? null : message.getFrom().getId() + "@telegram.org");
+                        configuration.privacyMode() ? null : message.getFrom().getId() + "@telegram.org",
+                        configuration.blockAdsTrackers());
                 LOGGER.info("Scanned message {} in chat {} from user {}: risk_score={}, suggested_action={}, "
                                 + "classification={}, resolved_entities={}, scanner_results={}",
                         message.getMessageId(), message.getChatId(), message.getFrom().getId(), scannedContent.riskScore(),

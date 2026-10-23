@@ -1,4 +1,4 @@
-# SpamProtectionBot
+# <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icon/spb_light.svg"><img src="assets/icon/spb_dark.svg" alt="SpamProtectionBot" width="32" height="32"></picture> SpamProtectionBot
 
 SpamProtectionBot is a Telegram bot that protects group chats and personal inboxes from spam, phishing, and abuse,
 backed by the [Open Federated Database](https://github.com/Nosial/OFD-Specification) specification. The bot itself
@@ -222,6 +222,16 @@ notification after its action buttons are used up. Telegram rejects a message wh
 value must be a public `http` or `https` URL — a `localhost` or `127.0.0.1` address will cause those messages to fail.
 
 ### Federation Authentication
+
+Use a dedicated Federation operator with client permissions for `federation.access_token`. On authentication,
+the bot sets that operator's OFD 2.0 `configuration.is_bot` flag, leaving both report-assignment settings unchanged.
+This marks its subsequent reports and evidence as automated and makes its evidence confidential on creation.
+The reserved root and system operators cannot be used as the bot identity. If configuration fails, authenticated
+writes remain disabled and setup is retried. Operators signing in through `/auth` keep their own configuration.
+
+Telegram messages and captions use OFD's default `TEXT` content type. Scanning and entity queries use the server's
+default concerns; `ADVERTISING` and `TRACKING` reports are supported, but those categories only affect moderation
+when included in the server's default concerns. `/evidence` displays automation, content type, and supplied context.
 
 A Federation server treats an anonymous client and an authenticated one differently, and — importantly — treats a
 *misconfigured* authenticated client worse than an anonymous one: several requests a server may allow anonymously

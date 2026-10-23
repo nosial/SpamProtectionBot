@@ -9,6 +9,8 @@ import net.nosial.spb.objects.database.ChatConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +49,8 @@ public final class ChatConfigurationManager
     {
         this.database = Objects.requireNonNull(database, "database must not be null");
         this.defaultPrivacyMode = defaultPrivacyMode;
+        this.migrateSchema();
+
         this.cache = Cache.create(CACHE_MAX_SIZE, CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
         this.channelLinkCache = Cache.create(CACHE_MAX_SIZE, CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
         this.verificationCodeCache = Cache.create(CACHE_MAX_SIZE, CACHE_EXPIRY_MINUTES, TimeUnit.MINUTES);
@@ -166,6 +170,18 @@ public final class ChatConfigurationManager
     public void setScanningEnabled(long chatId, boolean enabled) throws DatabaseException
     {
         update(chatId, "scanning_enabled = ?", enabled);
+    }
+
+    /**
+     * Updates whether content scanning also assesses advertising and tracking.
+     *
+     * @param chatId the Telegram chat id
+     * @param enabled whether to block ads and trackers
+     * @throws DatabaseException If there is an error while updating the database.
+     */
+    public void setBlockAdsTrackers(long chatId, boolean enabled) throws DatabaseException
+    {
+        update(chatId, "block_ads_trackers = ?", enabled);
     }
 
     /**
@@ -434,6 +450,39 @@ public final class ChatConfigurationManager
         {
             LOGGER.warn("Failed to load chat configuration for chat {}: {}", chatId, e.getMessage());
             throw new Cache.LoadFailedException("Failed to load chat configuration " + chatId, e);
+        }
+    }
+
+    /**
+     * Enables ads and tracker protection for existing chats when adding the setting.
+     *
+     * @throws IllegalStateException if the schema cannot be migrated
+     */
+    private void migrateSchema()
+    {
+        try
+        {
+            this.database.transaction(connection ->
+            {
+                try (ResultSet columns = connection.getMetaData().getColumns(null, null,
+                        "chat_configuration", "block_ads_trackers"))
+                {
+                    if (columns.next())
+                    {
+                        return null;
+                    }
+                }
+                try (Statement statement = connection.createStatement())
+                {
+                    statement.execute("ALTER TABLE chat_configuration ADD COLUMN block_ads_trackers INTEGER NOT NULL DEFAULT 1");
+                    LOGGER.info("Added missing column block_ads_trackers to chat_configuration");
+                }
+                return null;
+            });
+        }
+        catch (DatabaseException e)
+        {
+            throw new IllegalStateException("Failed to migrate the chat_configuration schema: " + e.getMessage(), e);
         }
     }
 }

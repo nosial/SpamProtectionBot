@@ -37,9 +37,10 @@ import java.util.regex.Pattern;
 /**
  * Handles the {@code /blacklist} command, intended for authenticated Federation operators.
  *
- * <p>The command blacklists an entity on the Federation server, backed by a supporting report
+ * <p>The command blacklists an entity on the Federation server, optionally backed by a supporting report
  * record. It accepts several forms:
  * <ul>
+ *     <li>{@code /blacklist <identifier> <type> <expires>} without a reply — blacklist without a report,</li>
  *     <li>{@code /blacklist <identifier> <report_uuid> <type> <expires>} — blacklist the given
  *     entity against an existing report uuid,</li>
  *     <li>{@code /blacklist <report_uuid> <type> <expires>} as a reply to a message — blacklist
@@ -111,7 +112,7 @@ public final class BlacklistHandler extends Handler
             publishTarget(context, message, parsed);
 
             String reportUuid = parsed.reportUuid();
-            if (reportUuid == null)
+            if (reportUuid == null && parsed.targetAuthor() != null)
             {
                 reportUuid = createReferenceReport(context, operator.accessToken(), message, parsed);
                 if (reportUuid == null)
@@ -139,7 +140,7 @@ public final class BlacklistHandler extends Handler
 
             String html = lm.get(lang, "blacklist", "success_header")
                     + lm.get(lang, "blacklist", "entity", HtmlEscape.escape(parsed.entityIdentifier())) + "\n"
-                    + lm.get(lang, "blacklist", "report_id", HtmlEscape.escape(reportUuid)) + "\n"
+                    + (reportUuid != null ? lm.get(lang, "blacklist", "report_id", HtmlEscape.escape(reportUuid)) + "\n" : "")
                     + lm.get(lang, "blacklist", "type",
                     HtmlEscape.escape(MessageHelper.displayName(parsed.incidentType()))) + "\n"
                     + lm.get(lang, "blacklist", "expires",
@@ -194,7 +195,7 @@ public final class BlacklistHandler extends Handler
      * @param lang the resolved language
      * @return the fully resolved arguments, or throws when they are invalid
      */
-    private static BlacklistRequest parseArguments(HandlerContext context, Message message, String[] args,
+    static BlacklistRequest parseArguments(HandlerContext context, Message message, String[] args,
                                                   Language lang) throws ArgumentParseException
     {
         LanguageManager lm = context.languages();
@@ -230,6 +231,14 @@ public final class BlacklistHandler extends Handler
                 throw new ArgumentParseException(lm.get(lang, "blacklist", "usage"));
             }
             reportUuid = requireReportUuid(lm, lang, args[1]);
+        }
+        else if (args.length == 3 && targetMessage == null)
+        {
+            entityIdentifier = resolveIdentifier(context, args[0], lang);
+            if (entityIdentifier == null)
+            {
+                throw new ArgumentParseException(lm.get(lang, "blacklist", "usage"));
+            }
         }
         else
         {
@@ -398,7 +407,7 @@ public final class BlacklistHandler extends Handler
         {
             return argument;
         }
-        if (argument.contains("@"))
+        if (argument.indexOf("@") > 0)
         {
             return argument;
         }
@@ -527,11 +536,11 @@ public final class BlacklistHandler extends Handler
      *
      * @param entityIdentifier the entity to blacklist
      * @param targetAuthor the replied-to author being blacklisted, or {@code null} for an explicit identifier
-     * @param reportUuid the supporting report UUID, or {@code null} to create one
+     * @param reportUuid the supporting report UUID, or {@code null} to create one only for a replied-to author
      * @param incidentType the incident type of the blacklist
      * @param expirationSeconds the expiration duration in seconds, added to the current time
      */
-    private record BlacklistRequest(String entityIdentifier, User targetAuthor, String reportUuid, IncidentType incidentType, long expirationSeconds)
+    record BlacklistRequest(String entityIdentifier, User targetAuthor, String reportUuid, IncidentType incidentType, long expirationSeconds)
     {
     }
 }
