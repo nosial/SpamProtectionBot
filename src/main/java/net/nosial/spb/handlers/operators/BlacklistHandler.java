@@ -231,6 +231,14 @@ public final class BlacklistHandler extends Handler
             }
             reportUuid = requireReportUuid(lm, lang, args[1]);
         }
+        else if (args.length == 3 && targetMessage == null)
+        {
+            entityIdentifier = resolveIdentifier(context, args[0], lang);
+            if (entityIdentifier == null)
+            {
+                throw new ArgumentParseException(lm.get(lang, "blacklist", "usage"));
+            }
+        }
         else
         {
             targetMessage = requireReplyTarget(context, message, targetMessage, lang);
