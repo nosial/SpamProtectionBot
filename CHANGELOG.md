@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is an ongoing update
 
+### Added
+- Configure the bot's dedicated Federation operator with `is_bot`, preserving report assignment preferences and
+  retrying failed setup before enabling authenticated writes; `/auth` identities are unchanged
+- Blacklist an explicit entity without a report using `/blacklist <identifier> <type> <expires>` without a reply
+- Show evidence automation, content type and context in all bundled languages
+- Local HTTP integration coverage for OFD 2.0 operator setup, report-free blacklists and lookup failures
+
+### Changed
+- Updated to JFederation 2.0.1 and version `2.0` of the OFD Specification, servers implementing OFD 1.x are no longer
+   supported, and a warning is logged at startup when the server reports another major API version
+- `/auth` shows the separate auto-assignment settings for ordinary and automated reports
+
+### Fixed
+- Only HTTP 404 is treated as an absent Federation record; server errors mentioning “not found” are surfaced
+- Resolve leading `@username` blacklist targets as Telegram usernames
+- The bot now retries authenticating with Federation in the background when the server was unreachable, instead of
+  staying anonymous until restarted
+
 
 
 ## [1.0.12] - 2026-10-07
