@@ -111,7 +111,7 @@ public final class BlacklistHandler extends Handler
             publishTarget(context, message, parsed);
 
             String reportUuid = parsed.reportUuid();
-            if (reportUuid == null)
+            if (reportUuid == null && parsed.targetAuthor() != null)
             {
                 reportUuid = createReferenceReport(context, operator.accessToken(), message, parsed);
                 if (reportUuid == null)
@@ -139,7 +139,7 @@ public final class BlacklistHandler extends Handler
 
             String html = lm.get(lang, "blacklist", "success_header")
                     + lm.get(lang, "blacklist", "entity", HtmlEscape.escape(parsed.entityIdentifier())) + "\n"
-                    + lm.get(lang, "blacklist", "report_id", HtmlEscape.escape(reportUuid)) + "\n"
+                    + (reportUuid != null ? lm.get(lang, "blacklist", "report_id", HtmlEscape.escape(reportUuid)) + "\n" : "")
                     + lm.get(lang, "blacklist", "type",
                     HtmlEscape.escape(MessageHelper.displayName(parsed.incidentType()))) + "\n"
                     + lm.get(lang, "blacklist", "expires",
@@ -194,7 +194,7 @@ public final class BlacklistHandler extends Handler
      * @param lang the resolved language
      * @return the fully resolved arguments, or throws when they are invalid
      */
-    private static BlacklistRequest parseArguments(HandlerContext context, Message message, String[] args,
+    static BlacklistRequest parseArguments(HandlerContext context, Message message, String[] args,
                                                   Language lang) throws ArgumentParseException
     {
         LanguageManager lm = context.languages();
