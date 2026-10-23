@@ -1,4 +1,4 @@
-# SpamProtectionBot
+# <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icon/spb_light.svg"><img src="assets/icon/spb_dark.svg" alt="SpamProtectionBot" width="32" height="32"></picture> SpamProtectionBot
 
 SpamProtectionBot is a Telegram bot that protects group chats and personal inboxes from spam, phishing, and abuse,
 backed by the [Open Federated Database](https://github.com/Nosial/OFD-Specification) specification. The bot itself
@@ -223,6 +223,16 @@ value must be a public `http` or `https` URL — a `localhost` or `127.0.0.1` ad
 
 ### Federation Authentication
 
+Use a dedicated Federation operator with client permissions for `federation.access_token`. On authentication,
+the bot sets that operator's OFD 2.0 `configuration.is_bot` flag, leaving both report-assignment settings unchanged.
+This marks its subsequent reports and evidence as automated and makes its evidence confidential on creation.
+The reserved root and system operators cannot be used as the bot identity. If configuration fails, authenticated
+writes remain disabled and setup is retried. Operators signing in through `/auth` keep their own configuration.
+
+Telegram messages and captions use OFD's default `TEXT` content type. Scanning and entity queries use the server's
+default concerns; `ADVERTISING` and `TRACKING` reports are supported, but those categories only affect moderation
+when included in the server's default concerns. `/evidence` displays automation, content type, and supplied context.
+
 A Federation server treats an anonymous client and an authenticated one differently, and — importantly — treats a
 *misconfigured* authenticated client worse than an anonymous one: several requests a server may allow anonymously
 are refused outright to a token that identifies an operator without client permissions, since the server holds
@@ -295,13 +305,14 @@ Available in any chat; no authentication required.
 These commands require signing in as a Federation operator first, and run with that operator's own permissions
 rather than the bot's.
 
-| Command                               | Description                                                                                                                                                                                                                                                 |
-|---------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `/auth <access_token>`                | Sign in as a Federation operator with an access token                                                                                                                                                                                                       |
-| `/authinfo`                           | Show your current operator identity and permissions                                                                                                                                                                                                         |
-| `/deauth`                             | Sign out                                                                                                                                                                                                                                                    |
-| `/blacklist <type> <expires>` (reply) | Create a supporting report for the replied-to message's author, then blacklist them. Give an existing `<report_uuid>` before the type to blacklist against it instead, or the full `<identifier> <report_uuid> <type> <expires>` to skip the reply entirely |
-| `/link <entity> <target> <type>`      | Record a relationship (`alternative`, `proxy`, or `child`) between two Federation entities                                                                                                                                                                  |
+| Command                                               | Description                                                                                                                                                                                                                                                 |
+|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/auth <access_token>`                                | Sign in as a Federation operator with an access token                                                                                                                                                                                                       |
+| `/authinfo`                                           | Show your current operator identity and permissions                                                                                                                                                                                                         |
+| `/deauth`                                             | Sign out                                                                                                                                                                                                                                                    |
+| `/blacklist <identifier> <type> <expires>` (no reply) | Blacklist an entity without creating a supporting report                                                                                                                                                                                                    |
+| `/blacklist <type> <expires>` (reply)                 | Create a supporting report for the replied-to message's author, then blacklist them. Give an existing `<report_uuid>` before the type to blacklist against it instead, or the full `<identifier> <report_uuid> <type> <expires>` to skip the reply entirely |
+| `/link <entity> <target> <type>`                      | Record a relationship (`alternative`, `proxy`, or `child`) between two Federation entities                                                                                                                                                                  |
 
 ## Adding a Language
 
