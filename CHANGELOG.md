@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.13] - Ongoing
+## [1.0.13] - 2026-10-23
 
-This is an ongoing update
+This update brings SpamProtectionBot up to date with OFD 2.0
 
 ### Added
 - Configure the bot's dedicated Federation operator with `is_bot`, preserving report assignment preferences and
