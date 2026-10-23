@@ -37,9 +37,10 @@ import java.util.regex.Pattern;
 /**
  * Handles the {@code /blacklist} command, intended for authenticated Federation operators.
  *
- * <p>The command blacklists an entity on the Federation server, backed by a supporting report
+ * <p>The command blacklists an entity on the Federation server, optionally backed by a supporting report
  * record. It accepts several forms:
  * <ul>
+ *     <li>{@code /blacklist <identifier> <type> <expires>} without a reply — blacklist without a report,</li>
  *     <li>{@code /blacklist <identifier> <report_uuid> <type> <expires>} — blacklist the given
  *     entity against an existing report uuid,</li>
  *     <li>{@code /blacklist <report_uuid> <type> <expires>} as a reply to a message — blacklist
