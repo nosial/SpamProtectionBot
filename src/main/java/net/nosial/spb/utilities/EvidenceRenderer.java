@@ -63,6 +63,13 @@ public final class EvidenceRenderer
 
         html.append(lm.get(lang, "evidence", "confidential", lm.get(lang, "general", evidence.confidential() ? "yes" : "no"))).append('\n');
 
+        html.append(lm.get(lang, "evidence", "automated", lm.get(lang, "general", evidence.automated() ? "yes" : "no"))).append('\n');
+        html.append(lm.get(lang, "evidence", "content_type", MessageHelper.displayName(evidence.contentType()))).append('\n');
+        if (!evidence.getContext().isEmpty())
+        {
+            html.append(lm.get(lang, "evidence", "context", HtmlEscape.escape(evidence.getContext().toString()))).append('\n');
+        }
+
         if (evidence.textContent() != null && !evidence.textContent().isBlank())
         {
             html.append(lm.get(lang, "evidence", "content", HtmlEscape.escape(evidence.textContent()))).append('\n');
