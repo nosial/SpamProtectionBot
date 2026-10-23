@@ -23,6 +23,7 @@ import net.nosial.spb.enums.ScanningBehavior;
  * @param channelLinkId the linked notification chat or channel id, or {@code null}
  * @param channelLinkVerificationCode the one-time code used to link a notification chat, or {@code null}
  * @param channelLinkThreadId the forum topic id in the linked notification chat, or {@code null}
+ * @param blockAdsTrackers whether content scanning also assesses advertising and tracking
  */
 public record ChatConfiguration(
         long chatId,
@@ -39,8 +40,41 @@ public record ChatConfiguration(
         boolean reportingNotificationsEnabled,
         Long channelLinkId,
         Long channelLinkVerificationCode,
-        Long channelLinkThreadId)
+        Long channelLinkThreadId,
+        boolean blockAdsTrackers)
 {
+    /**
+     * Constructs a new ChatConfiguration object with specified properties.
+     *
+     * @param chatId the Telegram chat ID
+     * @param enabled whether the configuration is active
+     * @param scanningEnabled whether scanning is enabled for this chat
+     * @param scanningBehavior the scanning behavior determining moderation level
+     * @param joinProtectionEnabled whether join protection is enabled
+     * @param joinProtectionBehavior the behavior for handling new member protections
+     * @param joinProtectionNotificationsEnabled whether join protection notifications are enabled
+     * @param privacyMode whether the chat operates in privacy mode
+     * @param reportingEnabled whether message reporting is enabled
+     * @param moderatorNotificationsEnabled whether notifications for moderators are enabled
+     * @param scanningNotificationsEnabled whether scanning-related notifications are enabled
+     * @param reportingNotificationsEnabled whether reporting-related notifications are enabled
+     * @param channelLinkId the linked channel ID, or null if none
+     * @param channelLinkVerificationCode the verification code for the linked channel, or null
+     * @param channelLinkThreadId the thread ID in the linked channel, or null
+     */
+    public ChatConfiguration(long chatId, boolean enabled, boolean scanningEnabled, ScanningBehavior scanningBehavior,
+                             boolean joinProtectionEnabled, JoinProtectionBehavior joinProtectionBehavior,
+                             boolean joinProtectionNotificationsEnabled, boolean privacyMode, boolean reportingEnabled,
+                             boolean moderatorNotificationsEnabled, boolean scanningNotificationsEnabled,
+                             boolean reportingNotificationsEnabled, Long channelLinkId, Long channelLinkVerificationCode,
+                             Long channelLinkThreadId)
+    {
+        this(chatId, enabled, scanningEnabled, scanningBehavior, joinProtectionEnabled, joinProtectionBehavior,
+                joinProtectionNotificationsEnabled, privacyMode, reportingEnabled, moderatorNotificationsEnabled,
+                scanningNotificationsEnabled, reportingNotificationsEnabled, channelLinkId, channelLinkVerificationCode,
+                channelLinkThreadId, true);
+    }
+
     /**
      * Creates the configuration a chat starts with before anybody has changed anything.
      *
@@ -62,7 +96,7 @@ public record ChatConfiguration(
      * Reads a configuration out of its database row.
      *
      * <p>The row is the only argument because the row already says everything: rather than making
-     * the caller pull fifteen columns out and pass them along in the right order, the constructor
+     * the caller pull individual columns out and pass them along in the right order, the constructor
      * reads the ones it owns.
      *
      * @param row a {@code chat_configuration} row, positioned on the record to read
@@ -84,7 +118,8 @@ public record ChatConfiguration(
                 row.getInt("reporting_notifications_enabled") != 0,
                 nullableLong(row, "channel_link_id"),
                 nullableLong(row, "channel_link_verification_code"),
-                nullableLong(row, "channel_link_thread_id"));
+                nullableLong(row, "channel_link_thread_id"),
+                row.getInt("block_ads_trackers") != 0);
     }
 
     /**
