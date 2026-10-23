@@ -402,6 +402,9 @@ blacklist:
 authentication:
   unavailable: "<b>Authentication Unavailable</b>\n\nFederation is not configured."
   usage: "Usage: <code>/auth &lt;access_token&gt;</code>"
+  private_only: "<b>Private Chat Only</b>\n\nSend <code>/auth</code> in a private chat with me, so your access token stays secret."
+  token_deleted: "<b>Access Token Exposed</b>\n\nYour access token was visible to this chat, so I deleted your message and did not use the token. Generate a new token on the Federation server, then send <code>/auth</code> in a private chat with me."
+  token_not_deleted: "<b>Access Token Exposed</b>\n\nYour access token is visible to this chat and I could not delete your message, so I did not use the token. Delete the message, generate a new token on the Federation server, then send <code>/auth</code> in a private chat with me."
   authenticated: "<b>Authenticated</b>\n\nSigned in as <b>{0}</b> (<code>{1}</code>).\n\nUse <code>/authinfo</code> to view your current operator permissions."
   rejected: "<b>Authentication Failed</b>\n\nThe access token was rejected by the Federation server."
   credential_store_failed: "<b>Authentication Failed</b>\n\nCould not store your credential. Please try again."

@@ -402,6 +402,9 @@ blacklist:
 authentication:
   unavailable: "<b>Autenticación no disponible</b>\n\nLa Federación no está configurada."
   usage: "Uso: <code>/auth &lt;access_token&gt;</code>"
+  private_only: "<b>Solo en chat privado</b>\n\nEnvíe <code>/auth</code> en un chat privado conmigo para que su token de acceso siga siendo secreto."
+  token_deleted: "<b>Token de acceso expuesto</b>\n\nSu token de acceso era visible en este chat, por lo que eliminé su mensaje y no usé el token. Genere un token nuevo en el servidor de la Federación y luego envíe <code>/auth</code> en un chat privado conmigo."
+  token_not_deleted: "<b>Token de acceso expuesto</b>\n\nSu token de acceso es visible en este chat y no pude eliminar su mensaje, por lo que no usé el token. Elimine el mensaje, genere un token nuevo en el servidor de la Federación y luego envíe <code>/auth</code> en un chat privado conmigo."
   authenticated: "<b>Autenticado</b>\n\nInició sesión como <b>{0}</b> (<code>{1}</code>).\n\nUse <code>/authinfo</code> para ver sus permisos de operador actuales."
   rejected: "<b>Error de autenticación</b>\n\nEl token de acceso fue rechazado por el servidor de la Federación."
   credential_store_failed: "<b>Error de autenticación</b>\n\nNo se pudo guardar su credencial. Por favor, inténtelo de nuevo."

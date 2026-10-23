@@ -402,6 +402,9 @@ blacklist:
 authentication:
   unavailable: "<b>身份验证不可用</b>\n\n未配置联邦。"
   usage: "用法：<code>/auth &lt;access_token&gt;</code>"
+  private_only: "<b>仅限私聊</b>\n\n请在与我的私聊中发送 <code>/auth</code>，以确保您的访问令牌保密。"
+  token_deleted: "<b>访问令牌已泄露</b>\n\n您的访问令牌在此聊天中可见，因此我已删除您的消息，并且没有使用该令牌。请在联邦服务器上生成新令牌，然后在与我的私聊中发送 <code>/auth</code>。"
+  token_not_deleted: "<b>访问令牌已泄露</b>\n\n您的访问令牌在此聊天中可见，而我无法删除您的消息，因此没有使用该令牌。请删除该消息，在联邦服务器上生成新令牌，然后在与我的私聊中发送 <code>/auth</code>。"
   authenticated: "<b>已身份验证</b>\n\n已作为 <b>{0}</b> (<code>{1}</code>) 登录。\n\n使用 <code>/authinfo</code> 查看您当前的操作员权限。"
   rejected: "<b>身份验证失败</b>\n\n访问令牌被联邦服务器拒绝。"
   credential_store_failed: "<b>身份验证失败</b>\n\n无法存储您的凭据。请再试一次。"

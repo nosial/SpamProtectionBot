@@ -14,6 +14,7 @@ import net.nosial.spb.exceptions.DatabaseException;
 import net.nosial.spb.objects.context.HandlerContext;
 import net.nosial.spb.objects.database.OperatorIdentity;
 import net.nosial.spb.utilities.HtmlEscape;
+import net.nosial.spb.utilities.ModerationActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
@@ -24,8 +25,9 @@ import java.util.Optional;
 /**
  * Handles an individual Telegram user's Federation operator credentials.
  *
- * <p>{@code /auth <access-token>} validates a token with the Federation server before
- * atomically persisting it against the caller's Telegram user id. {@code /deauth} removes that
+ * <p>{@code /auth <access-token>} validates a token with the Federation server before atomically
+ * persisting it against the caller's Telegram user id. It is only accepted in a private chat, since
+ * anywhere else the token would be visible to the whole chat. {@code /deauth} removes that
  * persisted credential. {@code /authinfo} creates a short-lived client with the caller's stored
  * credential and returns the current operator record from {@code getSelf()}. The process-wide
  * Federation client is never mutated, so one user's command cannot authenticate another user's
@@ -73,6 +75,23 @@ public final class AuthenticationHandler extends Handler
      */
     private static void authenticate(HandlerContext context, Message message, Language lang) throws TelegramApiException
     {
+        if (!isPrivateChat(message))
+        {
+            if (getMessagePayload(message) == null)
+            {
+                sendReply(context, message, context.languages().get(lang, "authentication", "private_only"));
+            }
+            else if (ModerationActions.deleteMessage(context, message))
+            {
+                sendReply(context, message, context.languages().get(lang, "authentication", "token_deleted"));
+            }
+            else
+            {
+                sendReply(context, message, context.languages().get(lang, "authentication", "token_not_deleted"));
+            }
+            return;
+        }
+
         if (!context.federation().isAvailable())
         {
             sendReply(context, message, context.languages().get(lang, "authentication", "unavailable"));
