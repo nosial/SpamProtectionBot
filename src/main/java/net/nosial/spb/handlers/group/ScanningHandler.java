@@ -24,6 +24,8 @@ import net.nosial.spb.objects.MediaGroupState;
 import net.nosial.spb.objects.NotificationAnchor;
 import net.nosial.spb.objects.ScanningOutcome;
 import net.nosial.spb.utilities.MessageContent;
+import net.nosial.spb.utilities.ScanFiles;
+import net.nosial.jfederation.records.ScanFile;
 import org.slf4j.Logger;
 import net.nosial.spb.utilities.MessageHelper;
 import net.nosial.spb.utilities.ModerationActions;
@@ -140,14 +142,16 @@ public final class ScanningHandler extends Handler
         }
 
         ScannedContent scannedContent = null;
-        if (shouldScan(context, message, configuration))
+        boolean scan = shouldScan(context, message, configuration);
+        List<ScanFile> files = scan && !configuration.privacyMode() ? ScanFiles.collect(context, message) : List.of();
+        if (scan && (hasText(message) || !files.isEmpty()))
         {
             try
             {
                 scannedContent = context.federation().scanContent(
                         MessageContent.buildScanInput(message, configuration.privacyMode()),
                         configuration.privacyMode() ? null : message.getFrom().getId() + "@telegram.org",
-                        configuration.blockAdsTrackers());
+                        configuration.blockAdsTrackers(), files);
                 LOGGER.info("Scanned message {} in chat {} from user {}: risk_score={}, suggested_action={}, "
                                 + "classification={}, resolved_entities={}, scanner_results={}",
                         message.getMessageId(), message.getChatId(), message.getFrom().getId(), scannedContent.riskScore(),
@@ -354,8 +358,9 @@ public final class ScanningHandler extends Handler
 
     /**
      * Returns whether the message is eligible for Federation scanning. Only enabled group chats
-     * with scanning enabled, scannable text or captions, and a bot administrator eligible to
-     * change chat information may scan.
+     * with scanning enabled, scannable text, captions or images (never images under Privacy Mode,
+     * which sends nothing but the text), and a bot administrator eligible to change chat
+     * information may scan.
      *
      * @param context the per-update command context
      * @param message the incoming message
@@ -364,11 +369,21 @@ public final class ScanningHandler extends Handler
      */
     static boolean shouldScan(HandlerContext context, Message message, ChatConfiguration configuration)
     {
-        String content = MessageContent.contentToScan(message);
         return shouldModerate(context, message, configuration)
                 && configuration.scanningEnabled()
-                && content != null
-                && !content.isBlank();
+                && (hasText(message) || (!configuration.privacyMode() && ScanFiles.hasImage(message)));
+    }
+
+    /**
+     * Checks if the given message contains non-blank text.
+     *
+     * @param message the Message object to be checked; should contain content to scan
+     * @return true if the content of the message is not null and is not blank, false otherwise
+     */
+    private static boolean hasText(Message message)
+    {
+        String content = MessageContent.contentToScan(message);
+        return content != null && !content.isBlank();
     }
 
     /**
