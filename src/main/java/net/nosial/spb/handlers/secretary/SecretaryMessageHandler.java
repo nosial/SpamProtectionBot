@@ -22,6 +22,8 @@ import net.nosial.spb.objects.database.SecretaryContact;
 import net.nosial.spb.objects.database.SecretaryConfiguration;
 import net.nosial.spb.utilities.FlatMetadata;
 import net.nosial.spb.utilities.MessageContent;
+import net.nosial.spb.utilities.ScanFiles;
+import net.nosial.jfederation.records.ScanFile;
 import net.nosial.spb.utilities.ReportAttachments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,11 +274,12 @@ public final class SecretaryMessageHandler extends Handler
         SuggestedAction entitySuggestion = null;
         String entityUuid = null;
 
-        if (hasText)
+        List<ScanFile> files = configuration.scanningEnabled() ? ScanFiles.collect(context, message) : List.of();
+        if (hasText || !files.isEmpty())
         {
             try
             {
-                ScannedContent scannedContent = federation.scanContent(MessageContent.buildScanInput(message, false), authorEntity);
+                ScannedContent scannedContent = federation.scanContent(MessageContent.buildScanInput(message, false), authorEntity, files);
                 contentAnalyzed = true;
                 contentSuggestion = scannedContent.suggestedAction();
                 ResolvedEntity author = scannedContent.getAuthorEntity();
