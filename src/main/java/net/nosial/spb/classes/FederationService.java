@@ -15,6 +15,7 @@ import net.nosial.jfederation.records.OperatorRecord;
 import net.nosial.jfederation.records.OperatorConfiguration;
 import net.nosial.jfederation.records.ReportRecord;
 import net.nosial.jfederation.records.ReportSubmission;
+import net.nosial.jfederation.records.ScanFile;
 import net.nosial.jfederation.records.ScannedContent;
 import net.nosial.jfederation.records.ServerInformation;
 import net.nosial.spb.exceptions.FederationException;
@@ -22,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +79,11 @@ public final class FederationService implements AutoCloseable
     private volatile String accessToken;
     private volatile FederationClient client;
     private volatile boolean authenticated;
+    // Requests are held back until this instant after the server rejected one with HTTP 429 or 503 (OFD 2.2 "Rate
+    // Limiting"), guarded by this.rateLimitLock
+    private final Object rateLimitLock = new Object();
+    private Instant retryNotBefore = Instant.EPOCH;
+    private int consecutiveRejections;
 
     /** Creates the unavailable instance; see {@link #UNAVAILABLE}. */
     private FederationService()
@@ -417,10 +425,38 @@ public final class FederationService implements AutoCloseable
      */
     public ScannedContent scanContent(ContentInput content, String entity) throws FederationException
     {
+        return scanContent(content, entity, List.of());
+    }
+
+    /**
+     * Scans a piece of content together with its files, such as the images of a message. Every server accepts
+     * files, a server that cannot interpret them, or does not scan them for the bot, ignores them.
+     *
+     * @param content the content to scan, which may have no text when files are given
+     * @param entity the entity the content came from, or {@code null} to scan anonymously
+     * @param files the files of the content, empty for none
+     * @return the scan result and its suggested action
+     * @throws FederationException If the server is unavailable or rejected the call
+     */
+    public ScannedContent scanContent(ContentInput content, String entity, List<ScanFile> files) throws FederationException
+    {
         requireAvailable();
         Objects.requireNonNull(content, "content must not be null");
 
-        return call("scan content", () -> this.client.scanContent(content, entity));
+        return call("scan content", () -> this.client.scanContent(content, entity, files));
+    }
+
+    /**
+     * Returns the server information that scanning depends on, its concerns and file limits. It is cached briefly
+     * to avoid an information request for every message.
+     *
+     * @return the server information
+     * @throws FederationException If the server is unavailable or rejected the call
+     */
+    public ServerInformation scanInformation() throws FederationException
+    {
+        return call("read scan capabilities",
+                () -> this.scanCapabilities.get("info", ignored -> this.client.getServerInformation()));
     }
 
     /**
@@ -436,9 +472,25 @@ public final class FederationService implements AutoCloseable
      */
     public ScannedContent scanContent(ContentInput content, String entity, boolean blockAdsTrackers) throws FederationException
     {
+        return scanContent(content, entity, blockAdsTrackers, List.of());
+    }
+
+    /**
+     * Scans content and its files with the server's usual concerns, optionally adding ads and trackers.
+     *
+     * @param content the content to scan, which may have no text when files are given
+     * @param entity the author entity, or {@code null} to scan anonymously
+     * @param blockAdsTrackers whether to include advertising and tracking concerns
+     * @param files the files of the content, empty for none
+     * @return the scan result and its suggested action
+     * @throws FederationException If the server is unavailable or rejected the call
+     */
+    public ScannedContent scanContent(ContentInput content, String entity, boolean blockAdsTrackers, List<ScanFile> files)
+            throws FederationException
+    {
         if (!blockAdsTrackers)
         {
-            return scanContent(content, entity);
+            return scanContent(content, entity, files);
         }
         requireAvailable();
         Objects.requireNonNull(content, "content must not be null");
@@ -446,14 +498,13 @@ public final class FederationService implements AutoCloseable
         ServerInformation information;
         try
         {
-            information = call("read scan capabilities",
-                    () -> this.scanCapabilities.get("info", ignored -> this.client.getServerInformation()));
+            information = scanInformation();
         }
         catch (FederationException e)
         {
             LOGGER.warn("Unable to read advertising and tracking scan capabilities; scanning with server defaults: {}",
                     e.getMessage());
-            return scanContent(content, entity);
+            return scanContent(content, entity, files);
         }
 
         return call("scan content", () ->
@@ -466,7 +517,8 @@ public final class FederationService implements AutoCloseable
                     concerns.add(concern);
                 }
             }
-            return this.client.scanContent(content, entity, null, null, concerns.isEmpty() ? null : concerns);
+            return this.client.scanContent(List.of(content), entity, null, null, concerns.isEmpty() ? null : concerns,
+                    files == null || files.isEmpty() ? null : Map.of(0, files));
         });
     }
 
@@ -850,14 +902,87 @@ public final class FederationService implements AutoCloseable
     private <T> T call(String what, Supplier<T> call) throws FederationException
     {
         requireAvailable();
+        requireNotRateLimited(what);
 
         try
         {
-            return call.get();
+            T result = call.get();
+            recordAccepted();
+            return result;
         }
-        catch (FederationClientException | IllegalArgumentException | IllegalStateException e)
+        catch (FederationClientException e)
+        {
+            recordRejected(e);
+            throw new FederationException("Failed to " + what + ": " + e.getMessage(), e);
+        }
+        catch (IllegalArgumentException | IllegalStateException e)
         {
             throw new FederationException("Failed to " + what + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Fails fast, without a network round trip, while the server asked the bot to wait before
+     * sending further requests (OFD 2.2 "Rate Limiting"). Its limits are not published and may
+     * cover every method, so every request of the bot's own client waits.
+     *
+     * @param what a description of the call, used in the failure message
+     * @throws FederationException while the delay of the last rejection has not elapsed
+     */
+    private void requireNotRateLimited(String what) throws FederationException
+    {
+        Duration remaining;
+        synchronized (this.rateLimitLock)
+        {
+            remaining = Duration.between(Instant.now(), this.retryNotBefore);
+        }
+
+        if (remaining.isPositive())
+        {
+            throw new FederationException("Failed to " + what + ": The Federation server is limiting requests, retrying in "
+                    + Math.max(1, remaining.toSeconds()) + " second(s)");
+        }
+    }
+
+    /**
+     * Holds back further requests after the server rejected one with HTTP 429 or 503, for the
+     * delay it gave, or, when it gave none (as servers before OFD 2.2 do), for a wait that doubles
+     * with each consecutive rejection, from one second up to five minutes.
+     *
+     * @param e the failure reported by the client
+     */
+    private void recordRejected(FederationClientException e)
+    {
+        if (!e.isRetryable())
+        {
+            return;
+        }
+
+        Duration delay = e.getRetryAfter();
+        synchronized (this.rateLimitLock)
+        {
+            if (delay == null)
+            {
+                delay = Duration.ofSeconds(Math.min(300L, 1L << Math.min(this.consecutiveRejections, 9)));
+            }
+
+            this.consecutiveRejections++;
+            this.retryNotBefore = Instant.now().plus(delay);
+        }
+
+        LOGGER.warn("Federation server rejected a request with HTTP {}; holding back requests for {} second(s)",
+                e.getStatusCode(), delay.toSeconds());
+    }
+
+    /**
+     * Resets the wait of {@link #recordRejected(FederationClientException)} once the server
+     * accepts a request again.
+     */
+    private void recordAccepted()
+    {
+        synchronized (this.rateLimitLock)
+        {
+            this.consecutiveRejections = 0;
         }
     }
 
@@ -872,16 +997,22 @@ public final class FederationService implements AutoCloseable
      */
     private <T> Optional<T> optional(String what, Supplier<T> call) throws FederationException
     {
+        requireNotRateLimited(what);
+
         try
         {
-            return Optional.ofNullable(call.get());
+            Optional<T> result = Optional.ofNullable(call.get());
+            recordAccepted();
+            return result;
         }
         catch (FederationClientException e)
         {
             if (isNotFound(e))
             {
+                recordAccepted();
                 return Optional.empty();
             }
+            recordRejected(e);
             throw new FederationException("Failed to " + what + ": " + e.getMessage(), e);
         }
         catch (IllegalArgumentException | IllegalStateException e)
