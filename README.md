@@ -17,7 +17,7 @@ bot is designed to keep working, in a reduced form, even when no Federation serv
 - **Secretary Mode** — connects to a personal Telegram Business account to screen first-time contacts before they
   reach your inbox, independently of group protection.
 - **Privacy Mode** — a per-chat switch that minimizes what is published to Federation (no automatic entity
-  publishing, scan submissions carry only message content) while the features that need data to work still send the
+  publishing, scan submissions carry only message text, never images) while the features that need data to work still send the
   minimum required.
 - **Operator tooling** — `/auth`, `/blacklist`, and `/link` let Federation operators manage entities and close
   assigned reports without leaving Telegram, using their own credentials rather than the bot's.
@@ -229,9 +229,19 @@ This marks its subsequent reports and evidence as automated and makes its eviden
 The reserved root and system operators cannot be used as the bot identity. If configuration fails, authenticated
 writes remain disabled and setup is retried. Operators signing in through `/auth` keep their own configuration.
 
-Telegram messages and captions use OFD's default `TEXT` content type. Scanning and entity queries use the server's
-default concerns; `ADVERTISING` and `TRACKING` reports are supported, but those categories only affect moderation
-when included in the server's default concerns. `/evidence` displays automation, content type, and supplied context.
+Telegram messages and captions use OFD's default `TEXT` content type. The photo or image document of a message is
+submitted with its text (OFD 2.1 scanned files), so images without text are scanned as well, outside Privacy Mode; a
+server that cannot interpret an image ignores it, and one that publishes no file limits is sent none. Images are
+never named by URL (OFD 2.2 scanned file URLs), as the download URL of a Telegram file carries the bot's token.
+Scanning and entity queries use the server's default concerns; `ADVERTISING` and `TRACKING` reports are supported,
+but those categories only affect moderation when included in the server's default concerns. `/evidence` displays
+automation, content type, and supplied context.
+
+A Federation server may limit the rate of its requests (OFD 2.2). When it rejects a request with HTTP 429 or 503, the
+bot sends no further request as itself until the delay the server gave has elapsed, or, from a server that gives none,
+a wait that doubles from one second up to five minutes. Meanwhile the features that need Federation report themselves
+unavailable, as they do while the server is unreachable, and moderation keeps working. Operators signing in through
+`/auth` act with their own tokens, which the server limits separately.
 
 A Federation server treats an anonymous client and an authenticated one differently, and — importantly — treats a
 *misconfigured* authenticated client worse than an anonymous one: several requests a server may allow anonymously
