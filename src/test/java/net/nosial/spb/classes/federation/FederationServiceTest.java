@@ -1,14 +1,24 @@
 package net.nosial.spb.classes.federation;
 
+import com.sun.net.httpserver.HttpServer;
 import net.nosial.jfederation.enums.EntityRelationshipType;
 import net.nosial.jfederation.enums.IncidentType;
 import net.nosial.jfederation.records.ContentInput;
 import net.nosial.spb.classes.FederationService;
 import net.nosial.spb.exceptions.FederationException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -180,4 +190,51 @@ class FederationServiceTest
         }
     }
 
+    @Nested
+    @DisplayName("Connected to a server that limits its requests")
+    class RateLimited
+    {
+        private final AtomicInteger requests = new AtomicInteger();
+        private HttpServer server;
+
+        @BeforeEach
+        void startServer() throws IOException
+        {
+            this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            this.server.createContext("/", exchange ->
+            {
+                this.requests.incrementAndGet();
+                byte[] body = "{\"success\": false, \"code\": 429, \"message\": \"Too Many Requests: Rate limit exceeded\", \"retry_after\": 30}"
+                        .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+                exchange.getResponseHeaders().set("Retry-After", "30");
+                exchange.sendResponseHeaders(429, body.length);
+                try (OutputStream output = exchange.getResponseBody())
+                {
+                    output.write(body);
+                }
+            });
+            this.server.start();
+        }
+
+        @AfterEach
+        void stopServer()
+        {
+            this.server.stop(0);
+        }
+
+        @Test
+        @DisplayName("no request is sent before the delay the server gave has elapsed")
+        void holdsBackRequestsUntilTheDelayElapses()
+        {
+            FederationService service = new FederationService("http://127.0.0.1:" + this.server.getAddress().getPort(), null);
+
+            assertThrows(FederationException.class, service::serverInformation);
+            FederationException e = assertThrows(FederationException.class, () -> service.queryEntity("1@telegram.org"));
+            assertThrows(FederationException.class, () -> service.scanContent(new ContentInput("hi"), null));
+
+            assertEquals(1, this.requests.get());
+            assertTrue(e.getMessage().contains("limiting requests"), e.getMessage());
+        }
+    }
 }
