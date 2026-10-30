@@ -937,7 +937,7 @@ public final class FederationService implements AutoCloseable
             remaining = Duration.between(Instant.now(), this.retryNotBefore);
         }
 
-        if (remaining.isPositive())
+        if (!remaining.isNegative() && !remaining.isZero())
         {
             throw new FederationException("Failed to " + what + ": The Federation server is limiting requests, retrying in "
                     + Math.max(1, remaining.toSeconds()) + " second(s)");
