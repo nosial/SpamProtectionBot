@@ -82,7 +82,7 @@ public final class SettingsHandler extends Handler
         if (!isBotChangeInformationAdministrator(context, message.getChatId()))
         {
             Language lang = resolveLanguage(context, message);
-            context.telegramClient().execute(SendMessage.builder()
+            sendWithEphemeralFallback(context, message, SendMessage.builder()
                     .chatId(String.valueOf(message.getChatId()))
                     .replyToMessageId(message.getMessageId())
                     .messageThreadId(MessageHelper.topicId(message))
