@@ -255,10 +255,11 @@ public final class UpdateDispatcher implements LongPollingUpdateConsumer, AutoCl
     private void process(Update update)
     {
         HandlerContext context = this.template.withUpdate(update);
-        trackMediaGroup(context);
 
         try
         {
+            trackMediaGroup(context);
+
             for (Handler observer : this.registry.observersFor(context))
             {
                 run(observer, context);
@@ -333,10 +334,14 @@ public final class UpdateDispatcher implements LongPollingUpdateConsumer, AutoCl
         {
             return null;
         }
+        if (message.getFrom() == null || message.getFrom().getId() == null)
+        {
+            return null;
+        }
+        long authorId = message.getFrom().getId();
         String cacheKey = MEDIA_GROUP_CACHE_PREFIX + message.getChatId() + ":" + mediaGroupId;
-        Object cached = context.cache().get(cacheKey,
-                ignored -> new MediaGroupState(message.getFrom().getId()));
-        if (!(cached instanceof MediaGroupState state) || state.authorId() != message.getFrom().getId())
+        Object cached = context.cache().get(cacheKey, ignored -> new MediaGroupState(authorId));
+        if (!(cached instanceof MediaGroupState state) || state.authorId() != authorId)
         {
             return null;
         }
