@@ -43,6 +43,7 @@ import org.telegram.telegrambots.meta.api.objects.messageorigin.MessageOriginUse
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -514,6 +515,11 @@ public final class ReportHandler extends Handler
      */
     private void startDialog(HandlerContext context, Message message, Message targetMessage, boolean ephemeral) throws TelegramApiException
     {
+        if (ephemeral && isGroupChat(message) && !canSendEphemeral(context, message.getChatId()))
+        {
+            ephemeral = false;
+        }
+
         Integer messageThreadId = MessageHelper.topicId(targetMessage);
         boolean reporterIsAdmin = isChatAdministrator(context, message.getChatId(), message.getFrom().getId());
         ReportContext session = reportSessions(context).create(message, targetMessage,
@@ -530,7 +536,25 @@ public final class ReportHandler extends Handler
                 .replyMarkup(markup)
                 .build();
 
-        Message sent = context.telegramClient().execute(prompt);
+        Message sent;
+        try
+        {
+            sent = context.telegramClient().execute(prompt);
+        }
+        catch (TelegramApiRequestException e)
+        {
+            if (!ephemeral || !isBotNotAdmin(e))
+            {
+                throw e;
+            }
+
+            // The cached administrator list was stale: start over with a regular prompt.
+            reportSessions(context).invalidate(session.hash());
+            context.chatAdmins().remove(message.getChatId());
+            startDialog(context, message, targetMessage, false);
+            return;
+        }
+
         if (sent != null)
         {
             Integer promptMessageId = ephemeral ? sent.getEphemeralMessageId() : sent.getMessageId();
