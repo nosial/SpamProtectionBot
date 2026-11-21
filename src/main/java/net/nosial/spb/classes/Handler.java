@@ -31,6 +31,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 /**
  * The base class every handler extends.
@@ -457,7 +458,86 @@ public abstract class Handler
         {
             builder.replyMarkup(markup);
         }
-        context.telegramClient().execute(builder.build());
+        sendWithEphemeralFallback(context, message, builder.build());
+    }
+
+    /**
+     * Returns whether the bot can send ephemeral messages in the given group chat. Telegram only
+     * delivers ephemeral messages from a bot that is an administrator of the chat and answers
+     * anything else with {@code BOT_NOT_ADMIN}.
+     *
+     * @param context the per-update context
+     * @param chatId the Telegram chat id
+     * @return {@code true} when the bot is a known administrator of the chat
+     */
+    protected static boolean canSendEphemeral(HandlerContext context, long chatId)
+    {
+        List<AdminInfo> administrators = context.chatAdmins().get(chatId, key -> loadAdministrators(context, key), null);
+        long botUserId = context.botUserId();
+        return administrators != null && administrators.stream().anyMatch(a -> a.id() == botUserId);
+    }
+
+    /**
+     * Sends a message that may be ephemeral, falling back to a regular reply to the command
+     * message when the bot cannot send ephemeral messages in the chat.
+     *
+     * @param context the per-update context
+     * @param command the message being answered, used as the reply target of the fallback
+     * @param request the message to send; modified in place when falling back
+     * @return the sent message; an ephemeral one only when it was delivered ephemerally
+     * @throws TelegramApiException if the message cannot be sent
+     */
+    protected static Message sendWithEphemeralFallback(HandlerContext context, Message command, SendMessage request) throws TelegramApiException
+    {
+        if (request.getEphemeralMessageParameters() != null && isGroupChat(command)
+                && !canSendEphemeral(context, command.getChatId()))
+        {
+            asRegularReply(request, command);
+        }
+
+        try
+        {
+            return context.telegramClient().execute(request);
+        }
+        catch (TelegramApiRequestException e)
+        {
+            if (request.getEphemeralMessageParameters() == null || !isBotNotAdmin(e))
+            {
+                throw e;
+            }
+
+            LOGGER.debug("Ephemeral message rejected in chat {} (bot is not an administrator), sending a regular reply", command.getChatId());
+            context.chatAdmins().remove(command.getChatId());
+            asRegularReply(request, command);
+            return context.telegramClient().execute(request);
+        }
+    }
+
+    /**
+     * Turns a message into a regular, non-ephemeral reply to the command message.
+     *
+     * @param request the message to change
+     * @param command the message being answered
+     */
+    private static void asRegularReply(SendMessage request, Message command)
+    {
+        request.setEphemeralMessageParameters(null);
+        if (request.getReplyToMessageId() == null && request.getReplyParameters() == null && command.getMessageId() != null)
+        {
+            request.setReplyToMessageId(command.getMessageId());
+        }
+    }
+
+    /**
+     * Returns whether Telegram rejected a request because the bot is not an administrator.
+     *
+     * @param e the request failure
+     * @return {@code true} for a {@code BOT_NOT_ADMIN} rejection
+     */
+    protected static boolean isBotNotAdmin(TelegramApiRequestException e)
+    {
+        String response = e.getApiResponse();
+        return response != null && response.contains("BOT_NOT_ADMIN");
     }
 
     /**
@@ -488,7 +568,7 @@ public abstract class Handler
             return;
         }
 
-        context.telegramClient().execute(SendMessage.builder()
+        sendWithEphemeralFallback(context, message, SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .messageThreadId(MessageHelper.topicId(message))
                 .ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom().getId()))
