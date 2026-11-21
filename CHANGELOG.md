@@ -5,9 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.14] - Ongoing
+## [1.0.14] - 2026-11-21
 
-This is an ongoing update
+This update brings SpamProtectionBot up to date with OFD 2.2
+
+### Added
+- The photo or image document of a scanned message is submitted with its text (OFD 2.1 scanned files), in groups and in
+  Secretary Mode, so that images without text are scanned as well. Privacy Mode never submits images, and no image is
+  downloaded for a server that publishes no file limits
+- The bot honours the rate limits of its Federation server (OFD 2.2): after a request is rejected with HTTP 429 or
+  503, no request is sent as the bot until the delay the server gave has elapsed, or, from a server that gives none, a
+  wait doubling from one second up to five minutes. Features that need Federation report themselves unavailable
+  meanwhile, as they do while the server is unreachable
+- Images are still downloaded and submitted with the request rather than named by URL (OFD 2.2 scanned file URLs),
+  since the download URL of a Telegram file carries the bot's token
+
+### Changed
+- Updated JFederation to 2.2.0
+
+### Fixed
+- An album posted without a sender (a channel post or an anonymous administrator) no longer crashes the bot; tracking
+  an album can no longer terminate the process
+- `/info`, `/report`, `/settings`, `/evidence` and other commands answer in groups where the bot is not an
+  administrator: Telegram refuses ephemeral messages from such a bot (`BOT_NOT_ADMIN`), so the answer is sent as a
+  regular reply to the command instead
 
 
 ## [1.0.13] - 2026-10-23
