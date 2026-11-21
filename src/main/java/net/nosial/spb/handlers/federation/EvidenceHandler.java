@@ -101,9 +101,9 @@ public final class EvidenceHandler extends Handler
                 infoMessage = replyHtml(context, "evidence-reply", message, html, markup);
             }
 
-            // The info message is ephemeral in groups, so attachments cannot reply to it there.
+            Integer replyTo = infoMessage != null && infoMessage.getEphemeralMessageId() == null ? infoMessage.getMessageId() : null;
             EvidenceRenderer.sendAttachments(context.telegramClient(), context.federation(), accessToken, evidence,
-                    message.getChatId(), isGroupChat(message) ? null : infoMessage.getMessageId());
+                    message.getChatId(), replyTo);
         }
         catch (FederationException e)
         {
@@ -124,7 +124,7 @@ public final class EvidenceHandler extends Handler
      */
     private static Message sendEphemeralHtmlAndReturn(HandlerContext context, Message message, String html, InlineKeyboardMarkup markup) throws TelegramApiException
     {
-        return execute(context, "evidence-ephemeral", SendMessage.builder()
+        return sendWithEphemeralFallback(context, message, SendMessage.builder()
                 .chatId(String.valueOf(message.getChatId()))
                 .ephemeralMessageParameters(MessageHelper.ephemeralTo(message.getFrom() != null ? message.getFrom().getId() : null))
                 .replyToMessageId(message.getMessageId())
